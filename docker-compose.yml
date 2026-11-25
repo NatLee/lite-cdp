@@ -1,0 +1,24 @@
+services:
+  lite-cdp:
+    build: .
+    image: lite-cdp:latest
+    container_name: lite-cdp
+    restart: unless-stopped
+    ports:
+      - "${CDP_PORT:-8585}:8585"
+    volumes:
+      # SQLite 資料庫在這裡，請記得備份
+      - lite-cdp-data:/app/data
+    environment:
+      # 外部看到的網址：追蹤程式碼用它組，是 https 時登入 cookie 會加 Secure
+      CDP_PUBLIC_URL: ${CDP_PUBLIC_URL:-}
+      CDP_COOKIE_SECURE: ${CDP_COOKIE_SECURE:-}
+      # 前面有反向代理時設 true，次數限制才會看到訪客真正的 IP（IP 只用來限流，不會存下來）
+      CDP_TRUST_PROXY: ${CDP_TRUST_PROXY:-}
+      # 同一個 IP 一分鐘最多送幾次資料（預設 600，0 是不限制）
+      CDP_RATE_LIMIT: ${CDP_RATE_LIMIT:-}
+      # 事件留幾天（預設 0：不自動刪）
+      CDP_RETENTION_DAYS: ${CDP_RETENTION_DAYS:-}
+
+volumes:
+  lite-cdp-data:

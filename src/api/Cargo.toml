@@ -1,0 +1,48 @@
+[package]
+name = "lite-cdp"
+version = "1.0.0"
+edition = "2021"
+license = "MIT"
+description = "Self-hosted lightweight customer data platform: a tracking snippet, visitor profiles, rule-based labels and saved segments"
+publish = false
+
+[lib]
+name = "lite_cdp"
+path = "src/lib.rs"
+
+[[bin]]
+name = "lite-cdp"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+argon2 = "0.5"
+axum = "0.8"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+csv = "1"
+# OsRng：密碼的 salt、session token 和追蹤金鑰用作業系統的亂數
+rand_core = { version = "0.6", features = ["getrandom"] }
+serde = { version = "1", features = ["derive"] }
+# preserve_order：特徵和事件屬性照送進來的順序排
+serde_json = { version = "1", features = ["preserve_order"] }
+sha2 = "0.10"
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "sqlite", "macros", "migrate"] }
+tokio = { version = "1", features = ["full"] }
+tower-http = { version = "0.6", features = ["fs", "trace", "set-header"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+http-body-util = "0.1"
+tempfile = "3"
+tower = { version = "0.5", features = ["util"] }
+
+# 密碼雜湊在未最佳化的 build 很慢；讓測試跑快一點。
+[profile.dev.package.argon2]
+opt-level = 3
+[profile.dev.package.blake2]
+opt-level = 3
+
+[profile.release]
+lto = "thin"
+strip = true
