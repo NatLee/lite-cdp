@@ -60,6 +60,13 @@ async def main():
             await page.goto(URL + route, wait_until="networkidle")
             assert not await page.evaluate("document.documentElement.scrollWidth > innerWidth"), route
 
+        await page.get_by_role("button", name="開啟選單").click()
+        await page.get_by_role("radio", name="深色", exact=True).click()
+        await page.get_by_role("button", name="關閉選單").click()
+        await page.set_viewport_size({"width": 1440, "height": 1050})
+        await expect(page.get_by_role("radio", name="深色", exact=True)).to_have_attribute("aria-checked", "true")
+        await page.get_by_role("radio", name="淺色", exact=True).click()
+        await expect(page.locator("html")).not_to_have_class("dark")
         assert not errors, errors
         print("Desktop, dark and mobile captures passed; no page errors or horizontal overflow.")
         await browser.close()
