@@ -76,6 +76,7 @@ export const segment: Segment = {
 const period = { visitors: 0, pageviews: 0, new_people: 0, identified: 0 };
 
 export const emptyOverview: Overview = {
+  engagement: [],
   totals: { people: 0, identified: 0, anonymous: 0 },
   last_7_days: period,
   previous_7_days: period,

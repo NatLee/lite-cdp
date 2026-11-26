@@ -8,7 +8,7 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Duration, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sqlx::{QueryBuilder, Sqlite};
@@ -25,12 +25,43 @@ use crate::{
 /// 匯出最多幾個人。
 const EXPORT_LIMIT: i64 = 50_000;
 
+/// Disjoint current last-seen cohorts; shared with the overview.
+#[derive(Clone, Copy, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Activity {
+    Recent,
+    Cooling,
+    Dormant,
+}
+
+impl Activity {
+    pub fn push(self, qb: &mut QueryBuilder<'_, Sqlite>, now: DateTime<Utc>) {
+        let week = crate::db::format_time(now - Duration::days(7));
+        let month = crate::db::format_time(now - Duration::days(30));
+        match self {
+            Self::Recent => {
+                qb.push(" AND p.last_seen >= ").push_bind(week);
+            }
+            Self::Cooling => {
+                qb.push(" AND p.last_seen < ")
+                    .push_bind(week)
+                    .push(" AND p.last_seen >= ")
+                    .push_bind(month);
+            }
+            Self::Dormant => {
+                qb.push(" AND p.last_seen < ").push_bind(month);
+            }
+        }
+    }
+}
+
 #[derive(Deserialize, Default)]
 pub struct ListQuery {
     /// `member`：知道 email 的；`anonymous`：還不知道是誰的
     kind: Option<String>,
     /// email、名稱或帳號含有這段文字
     q: Option<String>,
+    activity: Option<Activity>,
     label_id: Option<i64>,
     segment_id: Option<i64>,
     /// `last_seen`（預設）、`first_seen`、`pageviews`
@@ -44,6 +75,7 @@ pub struct Filter {
     site_id: i64,
     kind: String,
     q: Option<String>,
+    activity: Option<Activity>,
     label_id: Option<i64>,
     /// 分群的對象和條件
     segment: Option<(String, Rules)>,
@@ -57,6 +89,7 @@ impl Filter {
             site_id,
             kind: "all".into(),
             q: None,
+            activity: None,
             label_id: None,
             segment: Some((kind.to_owned(), rules)),
             now: Utc::now(),
@@ -89,6 +122,7 @@ impl Filter {
                 .as_deref()
                 .map(|q| q.trim().to_ascii_lowercase())
                 .filter(|q| !q.is_empty()),
+            activity: query.activity,
             label_id: query.label_id,
             segment,
             now: Utc::now(),
@@ -107,6 +141,9 @@ impl Filter {
                 qb.push(" AND p.email = ''");
             }
             _ => {}
+        }
+        if let Some(activity) = self.activity {
+            activity.push(&mut *qb, self.now);
         }
         if let Some(q) = &self.q {
             qb.push(" AND (instr(lower(p.email), ")
@@ -253,7 +290,7 @@ pub async fn list(
     let page = query.page.unwrap_or(1).max(1);
     let total = filter.count(&state).await?;
     let items = filter
-        .fetch(&state, order, per_page, (page - 1) * per_page)
+        .fetch(&state, order, per_page, (page - 1).saturating_mul(per_page))
         .await?;
     Ok(Json(json!({
         "items": items,
@@ -579,5 +616,52 @@ mod tests {
         assert_eq!(csv_safe("@amy"), "'@amy");
         assert_eq!(csv_safe("amy@example.com"), "amy@example.com");
         assert_eq!(csv_safe(""), "");
+    }
+}
+
+#[cfg(test)]
+mod engagement_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn activity_boundaries_are_disjoint_at_seven_and_thirty_days() {
+        let pool = sqlx::SqlitePool::connect("sqlite::memory:").await.unwrap();
+        sqlx::query("CREATE TABLE people (id INTEGER, last_seen TEXT)")
+            .execute(&pool)
+            .await
+            .unwrap();
+        let now = DateTime::parse_from_rfc3339("2026-03-15T12:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        for (id, seconds) in [
+            (1, 604799),
+            (2, 604800),
+            (3, 604801),
+            (4, 2592000),
+            (5, 2592001),
+        ] {
+            sqlx::query("INSERT INTO people VALUES (?,?)")
+                .bind(id)
+                .bind(crate::db::format_time(now - Duration::seconds(seconds)))
+                .execute(&pool)
+                .await
+                .unwrap();
+        }
+        for (activity, ids) in [
+            (Activity::Recent, vec![1_i64, 2]),
+            (Activity::Cooling, vec![3, 4]),
+            (Activity::Dormant, vec![5]),
+        ] {
+            let mut qb = QueryBuilder::new("SELECT p.id FROM people p WHERE 1=1");
+            activity.push(&mut qb, now);
+            qb.push(" ORDER BY p.id");
+            assert_eq!(
+                qb.build_query_scalar::<i64>()
+                    .fetch_all(&pool)
+                    .await
+                    .unwrap(),
+                ids
+            );
+        }
     }
 }

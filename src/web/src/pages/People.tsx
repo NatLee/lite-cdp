@@ -7,7 +7,7 @@ import { LabelChips, Pagination, PersonLink } from "../components/people";
 import { Empty, ErrorBanner, Loading, PageHeader } from "../components/ui";
 import { dateTime, num, timeAgo } from "../lib/format";
 import { useAsync, useDebounced } from "../lib/hooks";
-import type { PeopleFilter, PeopleSort, PersonKind } from "../types";
+import type { Activity, PeopleFilter, PeopleSort, PersonKind } from "../types";
 
 const PER_PAGE = 25;
 
@@ -26,6 +26,9 @@ const SORTS: { value: PeopleSort; label: string }[] = [
 export function People() {
   const site = useSite();
   const [params, setParams] = useSearchParams();
+  const activity = (params.get("activity") || undefined) as
+    | Activity
+    | undefined;
   const kind = (params.get("kind") ?? "all") as PersonKind;
   const labelId = Number(params.get("label_id")) || undefined;
   const segmentId = Number(params.get("segment_id")) || undefined;
@@ -57,6 +60,7 @@ export function People() {
   }, [q]);
 
   const filter: PeopleFilter = {
+    activity,
     kind: kind === "all" ? undefined : kind,
     q: params.get("q") ?? undefined,
     label_id: labelId,
@@ -67,32 +71,51 @@ export function People() {
 
   const labels = useAsync(() => api.labels(site.id), [site.id]);
   const segments = useAsync(() => api.segments(site.id), [site.id]);
-  const list = useAsync(() => api.people(site.id, { ...filter, page, per_page: PER_PAGE }), [site.id, filterKey, page]);
+  const list = useAsync(
+    () => api.people(site.id, { ...filter, page, per_page: PER_PAGE }),
+    [site.id, filterKey, page],
+  );
 
   const items = list.data?.items ?? [];
   const total = list.data?.total ?? 0;
-  const filtered = Boolean(kind !== "all" || filter.q || labelId || segmentId);
+  const filtered = Boolean(
+    activity || kind !== "all" || filter.q || labelId || segmentId,
+  );
   const segment = segments.data?.find((s) => s.id === segmentId);
 
   return (
     <PageBody>
       <PageHeader
         title="名單"
-        subtitle={segment ? `分群「${segment.name}」裡的人。` : "來過這個網站的每一個人：知道 email 的會員，和還不知道是誰的匿名訪客。"}
+        subtitle={
+          segment
+            ? `分群「${segment.name}」裡的人。`
+            : "來過這個網站的每一個人：知道 email 的會員，和還不知道是誰的匿名訪客。"
+        }
         actions={
-          <a className="btn btn-secondary" href={api.exportUrl(site.id, filter)} download>
+          <a
+            className="btn btn-secondary"
+            href={api.exportUrl(site.id, filter)}
+            download
+          >
             <Download className="size-4" /> 匯出 CSV
           </a>
         }
       />
 
-      <div className="mb-3 flex flex-wrap gap-1" role="tablist" aria-label="身分">
+      <div
+        className="mb-3 flex flex-wrap gap-1"
+        role="tablist"
+        aria-label="身分"
+      >
         {TABS.map((tab) => (
           <button
             key={tab.value}
             role="tab"
             aria-selected={kind === tab.value}
-            onClick={() => set({ kind: tab.value === "all" ? undefined : tab.value })}
+            onClick={() =>
+              set({ kind: tab.value === "all" ? undefined : tab.value })
+            }
             className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
               kind === tab.value
                 ? "bg-brand-600 font-medium text-white dark:bg-brand-500 dark:text-zinc-950"
@@ -144,9 +167,24 @@ export function People() {
         </select>
         <select
           className="input w-auto"
+          aria-label="最近活躍"
+          value={activity ?? ""}
+          onChange={(e) => set({ activity: e.target.value || undefined })}
+        >
+          <option value="">不限活躍時間</option>
+          <option value="recent">7 天內來過</option>
+          <option value="cooling">7–30 天未回訪</option>
+          <option value="dormant">超過 30 天未回訪</option>
+        </select>
+        <select
+          className="input w-auto"
           aria-label="排序"
           value={sort}
-          onChange={(e) => set({ sort: e.target.value === "last_seen" ? undefined : e.target.value })}
+          onChange={(e) =>
+            set({
+              sort: e.target.value === "last_seen" ? undefined : e.target.value,
+            })
+          }
         >
           {SORTS.map((s) => (
             <option key={s.value} value={s.value}>
@@ -175,8 +213,13 @@ export function People() {
             共 {num(total)} 人
           </div>
           {items.length === 0 ? (
-            <Empty icon={Users} title={filtered ? "沒有符合條件的人" : "還沒有人來過"}>
-              {filtered ? "換個條件試試，或按「清除」看全部。" : "追蹤程式碼裝好、有人打開網頁之後，就會出現在這裡。"}
+            <Empty
+              icon={Users}
+              title={filtered ? "沒有符合條件的人" : "還沒有人來過"}
+            >
+              {filtered
+                ? "換個條件試試，或按「清除」看全部。"
+                : "追蹤程式碼裝好、有人打開網頁之後，就會出現在這裡。"}
             </Empty>
           ) : (
             <div className="overflow-x-auto">
@@ -192,18 +235,29 @@ export function People() {
                 </thead>
                 <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
                   {items.map((p) => (
-                    <tr key={p.id} className="transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
+                    <tr
+                      key={p.id}
+                      className="transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                    >
                       <td className="td max-w-72 pl-4">
                         <PersonLink siteId={site.id} person={p} />
                       </td>
                       <td className="td">
                         <LabelChips labels={p.labels} />
                       </td>
-                      <td className="td text-right tabular-nums">{num(p.pageviews)}</td>
-                      <td className="td whitespace-nowrap text-zinc-600 dark:text-zinc-300" title={dateTime(p.first_seen)}>
+                      <td className="td text-right tabular-nums">
+                        {num(p.pageviews)}
+                      </td>
+                      <td
+                        className="td whitespace-nowrap text-zinc-600 dark:text-zinc-300"
+                        title={dateTime(p.first_seen)}
+                      >
                         {timeAgo(p.first_seen)}
                       </td>
-                      <td className="td pr-4 whitespace-nowrap text-zinc-600 dark:text-zinc-300" title={dateTime(p.last_seen)}>
+                      <td
+                        className="td pr-4 whitespace-nowrap text-zinc-600 dark:text-zinc-300"
+                        title={dateTime(p.last_seen)}
+                      >
                         {timeAgo(p.last_seen)}
                       </td>
                     </tr>
@@ -212,7 +266,11 @@ export function People() {
               </table>
             </div>
           )}
-          <Pagination page={page} pages={Math.ceil(total / PER_PAGE)} onChange={(p) => set({ page: String(p) })} />
+          <Pagination
+            page={page}
+            pages={Math.ceil(total / PER_PAGE)}
+            onChange={(p) => set({ page: String(p) })}
+          />
         </div>
       )}
     </PageBody>

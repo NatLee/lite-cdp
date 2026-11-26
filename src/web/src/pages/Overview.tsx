@@ -16,67 +16,13 @@ import {
   StatCard,
   Trend,
 } from "../components/people";
-import {
-  Badge,
-  Empty,
-  ErrorBanner,
-  Loading,
-  PageHeader,
-} from "../components/ui";
+import { Badge, Empty, ErrorBanner, PageHeader } from "../components/ui";
 import { num, timeAgo } from "../lib/format";
 import { useAsync } from "../lib/hooks";
-import type { Overview } from "../types";
-
-/** 最近 30 天每天的瀏覽頁數。 */
-function DailyChart({ daily }: { daily: Overview["daily"] }) {
-  const max = Math.max(1, ...daily.map((d) => d.pageviews));
-  const total = daily.reduce((sum, d) => sum + d.pageviews, 0);
-  const label = (date: string) => date.slice(5).replace("-", "/");
-  return (
-    <section className="atlas-chart card p-4 sm:p-5">
-      <div className="flex items-baseline justify-between">
-        <h2 className="text-sm font-semibold">最近 30 天</h2>
-        <span className="text-xs text-zinc-500 dark:text-zinc-400">
-          共瀏覽 {num(total)} 頁
-        </span>
-      </div>
-      <div
-        className="mt-4 flex h-36 items-end gap-[3px]"
-        role="img"
-        aria-label={`最近 30 天共瀏覽 ${total} 頁`}
-      >
-        {daily.map((d) => (
-          <div
-            key={d.date}
-            className="group relative flex h-full flex-1 items-end"
-          >
-            <div
-              className={`w-full rounded-t-sm transition-colors ${
-                d.pageviews === 0
-                  ? "bg-zinc-200 dark:bg-zinc-800"
-                  : "bg-brand-500 group-hover:bg-brand-600 dark:bg-brand-500 dark:group-hover:bg-brand-400"
-              }`}
-              style={{
-                height:
-                  d.pageviews === 0
-                    ? 2
-                    : `${Math.max(6, (d.pageviews / max) * 100)}%`,
-              }}
-            />
-            <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 rounded-md bg-zinc-900 px-1.5 py-0.5 text-[11px] whitespace-nowrap text-white group-hover:block dark:bg-white dark:text-zinc-900">
-              {label(d.date)}・{num(d.pageviews)} 頁・{num(d.visitors)} 人
-            </span>
-          </div>
-        ))}
-      </div>
-      <div className="mt-1.5 flex justify-between text-[11px] text-zinc-500 tabular-nums dark:text-zinc-400">
-        <span>{label(daily[0]?.date ?? "")}</span>
-        <span>{label(daily[Math.floor(daily.length / 2)]?.date ?? "")}</span>
-        <span>今天</span>
-      </div>
-    </section>
-  );
-}
+import {
+  EngagementAtlas,
+  TrafficExplorer,
+} from "../components/EngagementAtlas";
 
 function More({ to, children }: { to: string; children: string }) {
   return (
@@ -92,7 +38,10 @@ function More({ to, children }: { to: string; children: string }) {
 export function OverviewPage() {
   const site = useSite();
   const base = `/s/${site.id}`;
-  const { data, error } = useAsync(() => api.overview(site.id), [site.id]);
+  const { data, error, reload } = useAsync(
+    () => api.overview(site.id),
+    [site.id],
+  );
 
   return (
     <PageBody>
@@ -101,8 +50,25 @@ export function OverviewPage() {
         subtitle={site.url || "誰來過、看了什麼、哪些人值得聯絡。"}
         actions={!site.active && <Badge tone="amber">已停止收資料</Badge>}
       />
-      {error && <ErrorBanner message={error} />}
-      {!data && !error && <Loading />}
+      {error && (
+        <>
+          <ErrorBanner message={error} />
+          <button
+            className="btn btn-secondary mb-4"
+            onClick={() => void reload()}
+          >
+            重新載入總覽
+          </button>
+        </>
+      )}
+      {!data && !error && (
+        <div role="status" className="atlas-loading">
+          <span>正在整理訪客分布與每日訊號…</span>
+          <div />
+          <div />
+          <div />
+        </div>
+      )}
       {data && data.totals.people === 0 && (
         <div className="card">
           <Empty icon={Code2} title="還沒有收到資料">
@@ -117,46 +83,10 @@ export function OverviewPage() {
       )}
       {data && data.totals.people > 0 && (
         <div className="flex flex-col gap-4">
-          <section className="atlas-intro">
-            <div>
-              <span className="eyebrow">THE CUSTOMER ATLAS</span>
-              <h2>
-                每一次造訪，
-                <br />
-                拼成一個人的故事。
-              </h2>
-              <p>從匿名足跡到熟悉的名字，找到值得延續的關係。</p>
-              <Link to={`${base}/people`} className="atlas-cta">
-                探索訪客名單 <ArrowRight className="size-4" />
-              </Link>
-            </div>
-            <div className="journey-map" aria-label="訪客資料概況">
-              <div className="journey-point">
-                <span>01 / DISCOVER</span>
-                <strong>{num(data.totals.anonymous)}</strong>
-                <p>匿名訪客</p>
-              </div>
-              <span className="journey-connector" aria-hidden="true">
-                →
-              </span>
-              <div className="journey-point identified">
-                <span>02 / RECOGNIZE</span>
-                <strong>{num(data.totals.identified)}</strong>
-                <p>已辨識會員</p>
-              </div>
-              <span className="journey-connector" aria-hidden="true">
-                →
-              </span>
-              <Link to={`${base}/labels`} className="journey-point">
-                <span>03 / UNDERSTAND</span>
-                <strong>{num(data.labels.length)}</strong>
-                <p>行為標籤</p>
-              </Link>
-            </div>
-          </section>
+          <EngagementAtlas data={data} base={base} />
           <div className="atlas-metrics grid grid-cols-2 gap-4 lg:grid-cols-4">
             <StatCard
-              label="認得的人"
+              label="累計訪客"
               value={data.totals.people}
               icon={Users}
               to={`${base}/people`}
@@ -196,7 +126,7 @@ export function OverviewPage() {
               />
             </StatCard>
           </div>
-          <DailyChart daily={data.daily} />
+          <TrafficExplorer daily={data.daily} />
           <div className="atlas-insights grid grid-cols-1 gap-4 lg:grid-cols-2">
             <section className="card">
               <CardHeader

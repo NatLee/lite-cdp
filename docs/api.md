@@ -130,6 +130,7 @@ curl -i https://cdp.example.com/collect -d '{
 
 | 欄位 | 說明 |
 |---|---|
+| `engagement` | 三筆 `{activity, member, anonymous}`，依 `recent`、`cooling`、`dormant` 排列，包含零值；按目前 `email` 與 `last_seen` 分組 |
 | `totals` | `{people, identified, anonymous}` |
 | `last_7_days`、`previous_7_days` | `{visitors, pageviews, new_people, identified}` |
 | `daily` | 最近 30 天每天的 `{date, pageviews, visitors}`，舊的在前 |
@@ -137,6 +138,8 @@ curl -i https://cdp.example.com/collect -d '{
 | `top_referrers` | `{host, visitors}` |
 | `labels` | 每個標籤現在有幾個人 |
 | `recent_identified` | 最近被認出來的人 |
+
+每日 `visitors` 在同一天去重，不能跨日加總為整段期間的獨立訪客。`engagement` 是目前資料狀態，不是歷史轉換率；資料保留政策會影響可見資料。
 
 ### 人
 
@@ -153,6 +156,7 @@ curl -i https://cdp.example.com/collect -d '{
 | 參數 | 說明 |
 |---|---|
 | `kind` | `member`（知道 email 的）、`anonymous`（還不知道是誰的）；沒給是全部 |
+| `activity` | `recent`：最後造訪距今 ≤ 7 天；`cooling`：> 7 天且 ≤ 30 天；`dormant`：> 30 天。三組互斥，以 UTC 連續時間計算，清單與 CSV 皆支援 |
 | `q` | email、名稱或帳號含有這段文字 |
 | `label_id` | 有這個標籤的人 |
 | `segment_id` | 符合這個分群的人 |
