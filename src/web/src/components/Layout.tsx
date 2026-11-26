@@ -16,7 +16,15 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
-import { Link, NavLink, Outlet, useLocation, useMatch, useNavigate, useOutletContext } from "react-router";
+import {
+  Link,
+  NavLink,
+  Outlet,
+  useLocation,
+  useMatch,
+  useNavigate,
+  useOutletContext,
+} from "react-router";
 import { api } from "../api";
 import { useApp, useUser } from "../context";
 import { ROLE_LABEL } from "../lib/format";
@@ -73,29 +81,46 @@ const GLOBAL_NAV: NavItem[] = [
 
 function Brand() {
   return (
-    <Link to="/" className="flex items-center gap-2.5">
+    <Link to="/" className="brand flex items-center gap-2.5">
       <img src="/favicon.svg" alt="" className="size-8" />
       <span className="leading-tight">
-        <span className="block text-sm font-semibold tracking-tight">Lite CDP</span>
-        <span className="block text-[11px] text-zinc-500 dark:text-zinc-400">認識你的訪客</span>
+        <span className="block text-sm font-semibold tracking-tight">
+          Lite CDP
+        </span>
+        <span className="block text-[11px] text-zinc-500 dark:text-zinc-400">
+          CUSTOMER ATLAS
+        </span>
       </span>
     </Link>
   );
 }
 
 function navClass(isActive: boolean): string {
-  return `flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
+  return `atlas-nav-link flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
     isActive
       ? "bg-brand-50 font-medium text-brand-700 dark:bg-brand-950/70 dark:text-brand-200"
       : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
   }`;
 }
 
-function NavItems({ items, prefix = "", onNavigate }: { items: NavItem[]; prefix?: string; onNavigate?: () => void }) {
+function NavItems({
+  items,
+  prefix = "",
+  onNavigate,
+}: {
+  items: NavItem[];
+  prefix?: string;
+  onNavigate?: () => void;
+}) {
   return (
     <>
       {items.map(({ to, label, icon: Icon }) => (
-        <NavLink key={to} to={prefix + to} onClick={onNavigate} className={({ isActive }) => navClass(isActive)}>
+        <NavLink
+          key={to}
+          to={prefix + to}
+          onClick={onNavigate}
+          className={({ isActive }) => navClass(isActive)}
+        >
           <Icon className="size-4" />
           {label}
         </NavLink>
@@ -104,12 +129,19 @@ function NavItems({ items, prefix = "", onNavigate }: { items: NavItem[]; prefix
   );
 }
 
-function SidebarNav({ sites, onNavigate }: { sites: Site[]; onNavigate?: () => void }) {
+function SidebarNav({
+  sites,
+  onNavigate,
+}: {
+  sites: Site[];
+  onNavigate?: () => void;
+}) {
   const navigate = useNavigate();
   const match = useMatch("/s/:siteId/:section/*");
   const routeId = Number(match?.params.siteId) || null;
   // 不在某個網站底下時（設定頁之類），選單還是指向上次看的那個網站
-  const current = sites.find((s) => s.id === (routeId ?? lastSiteId())) ?? sites[0];
+  const current =
+    sites.find((s) => s.id === (routeId ?? lastSiteId())) ?? sites[0];
 
   useEffect(() => {
     if (!routeId) return;
@@ -121,19 +153,24 @@ function SidebarNav({ sites, onNavigate }: { sites: Site[]; onNavigate?: () => v
   }, [routeId]);
 
   return (
-    <nav className="flex flex-col gap-0.5">
+    <nav className="atlas-navigation">
       {current && (
         <>
-          <label className="sr-only" htmlFor="site-switcher">
+          <label
+            className="sr-only"
+            htmlFor={onNavigate ? "site-switcher-mobile" : "site-switcher"}
+          >
             網站
           </label>
           <select
-            id="site-switcher"
+            id={onNavigate ? "site-switcher-mobile" : "site-switcher"}
             className="input mb-2 font-medium"
             value={current.id}
             onChange={(e) => {
               // 換網站時留在同一種頁面
-              navigate(`/s/${e.target.value}/${match?.params.section ?? "overview"}`);
+              navigate(
+                `/s/${e.target.value}/${match?.params.section ?? "overview"}`,
+              );
               onNavigate?.();
             }}
           >
@@ -143,8 +180,12 @@ function SidebarNav({ sites, onNavigate }: { sites: Site[]; onNavigate?: () => v
               </option>
             ))}
           </select>
-          <NavItems items={SITE_NAV} prefix={`/s/${current.id}/`} onNavigate={onNavigate} />
-          <div className="my-2 border-t border-zinc-200 dark:border-zinc-800" />
+          <NavItems
+            items={SITE_NAV}
+            prefix={`/s/${current.id}/`}
+            onNavigate={onNavigate}
+          />
+          <div className="nav-divider" />
         </>
       )}
       <NavItems items={GLOBAL_NAV} onNavigate={onNavigate} />
@@ -162,7 +203,11 @@ function ThemeToggle() {
   const [theme, setTheme] = useState<ThemeChoice>(storedTheme);
   useEffect(() => applyTheme(theme), [theme]);
   return (
-    <div className="flex rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800" role="radiogroup" aria-label="外觀">
+    <div
+      className="flex rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800"
+      role="radiogroup"
+      aria-label="外觀"
+    >
       {THEMES.map(({ value, label, icon: Icon }) => (
         <button
           key={value}
@@ -188,21 +233,27 @@ function SidebarFooter() {
   const { logout, meta } = useApp();
   const user = useUser();
   return (
-    <div className="flex flex-col gap-2 border-t border-zinc-200 pt-3 dark:border-zinc-800">
+    <div className="atlas-account">
       <div className="flex items-center gap-1">
         <span className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5">
           <span className="grid size-7 shrink-0 place-items-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700 dark:bg-brand-950 dark:text-brand-300">
             {Array.from(user.display_name)[0]}
           </span>
           <span className="min-w-0">
-            <span className="block truncate text-sm font-medium">{user.display_name}</span>
+            <span className="block truncate text-sm font-medium">
+              {user.display_name}
+            </span>
             <span className="block text-[11px] text-zinc-500 dark:text-zinc-400">
               {ROLE_LABEL[user.role]}
               {meta ? `・v${meta.version}` : ""}
             </span>
           </span>
         </span>
-        <button className="btn btn-ghost px-2" onClick={() => void logout()} title="登出">
+        <button
+          className="btn btn-ghost px-2"
+          onClick={() => void logout()}
+          title="登出"
+        >
           <LogOut className="size-4" />
           <span className="text-xs">登出</span>
         </button>
@@ -221,31 +272,42 @@ export function Layout() {
   useEffect(() => setOpen(false), [location.pathname]);
 
   return (
-    <div className="min-h-screen lg:flex">
-      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col gap-6 border-r border-zinc-200 bg-white px-3 py-4 lg:flex dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="px-2">
+    <div className="atlas-app min-h-screen">
+      <header className="atlas-header">
+        <div className="atlas-masthead">
           <Brand />
+          <span className="atlas-motto">
+            Every visit is part of a bigger story.
+          </span>
+          <div className="hidden lg:block">
+            <SidebarFooter />
+          </div>
+          <button
+            className="btn btn-ghost px-2 lg:hidden"
+            onClick={() => setOpen(true)}
+            aria-label="開啟選單"
+          >
+            <Menu className="size-5" />
+          </button>
         </div>
-        <div className="flex-1 overflow-y-auto">
+        <div className="hidden lg:block">
           <SidebarNav sites={sites} />
         </div>
-        <SidebarFooter />
-      </aside>
-
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-zinc-200 bg-white/90 px-4 py-2.5 backdrop-blur lg:hidden dark:border-zinc-800 dark:bg-zinc-900/90">
-        <Brand />
-        <button className="btn btn-ghost px-2" onClick={() => setOpen(true)} aria-label="開啟選單">
-          <Menu className="size-5" />
-        </button>
       </header>
-
       {open && (
         <div className="fixed inset-0 z-40 lg:hidden">
-          <div className="absolute inset-0 bg-zinc-950/50" onClick={() => setOpen(false)} />
-          <div className="absolute inset-y-0 left-0 flex w-64 flex-col gap-6 bg-white px-3 py-4 shadow-xl dark:bg-zinc-900">
+          <div
+            className="absolute inset-0 bg-zinc-950/50"
+            onClick={() => setOpen(false)}
+          />
+          <div className="atlas-mobile absolute inset-y-0 left-0 flex w-72 flex-col gap-6 bg-white px-3 py-4 shadow-xl dark:bg-zinc-900">
             <div className="flex items-center justify-between px-2">
               <Brand />
-              <button className="btn btn-ghost px-1.5" onClick={() => setOpen(false)} aria-label="關閉選單">
+              <button
+                className="btn btn-ghost px-1.5"
+                onClick={() => setOpen(false)}
+                aria-label="關閉選單"
+              >
                 <X className="size-4" />
               </button>
             </div>
@@ -268,7 +330,11 @@ export function Layout() {
             <Loading />
           </PageBody>
         )}
-        {data && <Outlet context={{ sites, reloadSites: reload } satisfies SitesContext} />}
+        {data && (
+          <Outlet
+            context={{ sites, reloadSites: reload } satisfies SitesContext}
+          />
+        )}
       </main>
     </div>
   );
@@ -300,5 +366,9 @@ export function SiteScope() {
 }
 
 export function PageBody({ children }: { children: ReactNode }) {
-  return <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">{children}</div>;
+  return (
+    <div className="page-body mx-auto max-w-7xl px-4 py-6 sm:px-7 lg:px-10 lg:py-8">
+      {children}
+    </div>
+  );
 }

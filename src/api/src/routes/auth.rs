@@ -64,8 +64,26 @@ pub async fn setup(
         .display_name
         .filter(|n| !n.trim().is_empty())
         .unwrap_or_else(|| username.clone());
-    let id =
-        auth::create_user(&state.db, &username, &display_name, &body.password, "admin").await?;
+    auth::validate_username(&username)?;
+    auth::validate_password(&body.password)?;
+    let display_name = auth::clean_display_name(&display_name)?;
+    let hash = auth::hash_password(body.password).await?;
+    // The empty-database check and insertion must be one SQLite statement: two
+    // first-time requests can both pass the early check while hashing passwords.
+    let created = sqlx::query(
+        "INSERT INTO users (username, display_name, password_hash, role, created_at)
+         SELECT ?, ?, ?, 'admin', ? WHERE NOT EXISTS (SELECT 1 FROM users)",
+    )
+    .bind(&username)
+    .bind(&display_name)
+    .bind(hash)
+    .bind(crate::db::now())
+    .execute(&state.db)
+    .await?;
+    if created.rows_affected() == 0 {
+        return Err(AppError::conflict("已經設定過了，請直接登入"));
+    }
+    let id = created.last_insert_rowid();
     tracing::info!("建立了第一個管理員：{username}");
     let user = CurrentUser {
         id,

@@ -1,14 +1,11 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/NatLee/lite-cdp/main/docs/images/hero-dark.png">
-    <img src="https://raw.githubusercontent.com/NatLee/lite-cdp/main/docs/images/hero-light.png" alt="Lite CDP：誰來過、看了什麼、該找誰" width="100%">
-  </picture>
+  <img src="docs/images/cover.svg" alt="Lite CDP：從一次造訪，到真正認識" width="100%">
 </p>
 
 <p align="center">
   <a href="https://github.com/NatLee/lite-cdp/actions/workflows/ci.yml"><img src="https://github.com/NatLee/lite-cdp/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <img src="https://img.shields.io/badge/backend-Rust%20%2B%20axum-b7410e" alt="Rust + axum">
-  <img src="https://img.shields.io/badge/frontend-React%20%2B%20Tailwind-4f46e5" alt="React + Tailwind">
+  <img src="https://img.shields.io/badge/frontend-React%20%2B%20Tailwind-124bb6" alt="React + Tailwind">
   <img src="https://img.shields.io/badge/docker-one%20image-2496ed" alt="Docker">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT">
 </p>
@@ -21,8 +18,8 @@ Lite CDP 是一個自己架的小型顧客資料平台。在網站上貼一行�
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/NatLee/lite-cdp/main/docs/images/screenshot-overview-dark.png">
-    <img src="https://raw.githubusercontent.com/NatLee/lite-cdp/main/docs/images/screenshot-overview-light.png" alt="總覽：認得的人數、最近 7 天的訪客和瀏覽、每天的趨勢、熱門頁面、來源和標籤" width="100%">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/screenshot-overview-dark.png">
+    <img src="docs/images/screenshot-overview-light.png" alt="總覽：認得的人數、最近 7 天的訪客和瀏覽、每天的趨勢、熱門頁面、來源和標籤" width="100%">
   </picture>
 </p>
 
@@ -39,89 +36,35 @@ Lite CDP 是一個自己架的小型顧客資料平台。在網站上貼一行�
 - **帳號**：第一個打開網頁的人建立管理員，沒有預設帳號，也沒有預設密碼。密碼用 Argon2 雜湊，登入是 HttpOnly cookie。
 - 淺色和深色模式。
 
-## 畫面
+## 畫面與工作流程
 
-### 名單
+以鈷藍與天空藍構成「顧客地圖」：網站切換和功能導覽位於上方，保留完整寬度給名單、身份與行為時間軸。所有數字來自 API；截圖使用內建虛構 demo 資料。
 
-所有來過的人，認得的和匿名的都在。可以搜尋、依標籤或分群篩選，然後匯出。
+### 從足跡到身份
 
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/NatLee/lite-cdp/main/docs/images/screenshot-people-dark.png">
-    <img src="https://raw.githubusercontent.com/NatLee/lite-cdp/main/docs/images/screenshot-people-light.png" alt="名單：每個人的 email、標籤、瀏覽頁數和最後一次來的時間" width="100%">
-  </picture>
-</p>
+總覽把匿名訪客、已辨識會員與行為標籤並列呈現，再提供近期活動、熱門頁面與來源。這些是資料概況，並非轉換漏斗。
 
-### 一個人
+### 名單與個人旅程
 
-左邊是這個人做過的每一件事，一次工作階段一段；右邊是基本資料、身上的標籤（符合幾次）、用過的裝置、從哪裡來、最常看的頁面。
+搜尋、標籤和分群篩選共同整理名單；個人頁將每個工作階段串成時間軸，並列身份、標籤、裝置和來源。
 
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/NatLee/lite-cdp/main/docs/images/screenshot-person-dark.png">
-    <img src="https://raw.githubusercontent.com/NatLee/lite-cdp/main/docs/images/screenshot-person-light.png" alt="一個人的時間軸、屬性、標籤、裝置和來源" width="100%">
-  </picture>
-</p>
+![訪客名單](docs/images/screenshot-people-light.png)
+![個人旅程](docs/images/screenshot-person-light.png)
 
-### 標籤
+### 規則與分群
 
-標籤是規則，不是手動貼的：訪客的行為符合規則時自動貼上，不用改網站的程式。
+標籤按事件規則自動計算。分群編輯器保留三組條件，以及隨條件更新的人數與名單預覽。
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/NatLee/lite-cdp/main/docs/images/screenshot-labels-light.png" alt="標籤清單：每個標籤的規則、門檻和人數" width="100%">
-</p>
+![分群編輯](docs/images/screenshot-segment-light.png)
 
 <details>
-<summary>編輯標籤</summary>
+<summary>標籤、安裝、登入、深色與手機畫面</summary>
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/NatLee/lite-cdp/main/docs/images/screenshot-label-dialog-light.png" alt="編輯標籤：名稱、顏色、規則和要符合幾次" width="100%">
-</p>
-
-</details>
-
-### 分群
-
-三組條件，右邊即時顯示符合幾個人和前幾個是誰。
-
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/NatLee/lite-cdp/main/docs/images/screenshot-segment-dark.png">
-    <img src="https://raw.githubusercontent.com/NatLee/lite-cdp/main/docs/images/screenshot-segment-light.png" alt="分群編輯：必須符合、至少符合一個、不能符合三組條件，右邊是符合的人數和預覽" width="100%">
-  </picture>
-</p>
-
-<details>
-<summary>分群清單</summary>
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/NatLee/lite-cdp/main/docs/images/screenshot-segments-light.png" alt="分群清單：每個分群的條件摘要和現在符合的人數" width="100%">
-</p>
-
-</details>
-
-### 頁面
-
-哪些頁面最多人看，以及每一頁會讓訪客被貼上哪些標籤。
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/NatLee/lite-cdp/main/docs/images/screenshot-pages-light.png" alt="頁面：每一頁的瀏覽次數、訪客數和對應的標籤" width="100%">
-</p>
-
-### 安裝與設定
-
-可以直接複製的追蹤程式碼，旁邊會顯示有沒有收到資料。管理員在同一頁改網站設定、換金鑰。
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/NatLee/lite-cdp/main/docs/images/screenshot-install-light.png" alt="安裝與設定：追蹤程式碼、identify 和自訂事件的寫法、網站設定" width="100%">
-</p>
-
-<details>
-<summary>所有網站</summary>
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/NatLee/lite-cdp/main/docs/images/screenshot-sites-light.png" alt="網站清單：每個網站認得幾個人、最近一次收到資料的時間" width="100%">
-</p>
+![標籤](docs/images/screenshot-labels-light.png)
+![安裝](docs/images/screenshot-install-light.png)
+![登入](docs/images/screenshot-login-light.png)
+![深色總覽](docs/images/screenshot-overview-dark.png)
+<img src="docs/images/screenshot-mobile.png" alt="手機顧客總覽" width="390">
 
 </details>
 
@@ -257,6 +200,10 @@ bash docs/smoke-test.sh http://127.0.0.1:8585   # 對一個空的執行個體跑
 ```
 
 API 和收資料的格式在 [docs/api.md](docs/api.md)。
+
+## 設計與驗證
+
+[設計與實作紀錄](docs/design.md) 說明版型、響應式、後端修正及驗證範圍。封面是可編輯的 [SVG](docs/images/cover.svg)；應用畫面由 [擷取腳本](docs/capture-screenshots.py) 對隔離的 demo 執行個體重拍。
 
 ## 授權
 
