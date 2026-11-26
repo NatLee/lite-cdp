@@ -1760,3 +1760,40 @@ async fn meta_and_unknown_api_paths() {
     assert_eq!(status, StatusCode::NOT_FOUND);
     assert_eq!(body["error"], "找不到這個 API");
 }
+
+#[tokio::test]
+async fn concurrent_setup_creates_exactly_one_administrator() {
+    let app = TestApp::new().await;
+    let request = |index| {
+        app.call(
+            None,
+            Method::POST,
+            "/api/auth/setup",
+            Some(json!({ "username": format!("admin{index}"), "password": PASSWORD })),
+        )
+    };
+    let (a, b, c, d, e, f) = tokio::join!(
+        request(0),
+        request(1),
+        request(2),
+        request(3),
+        request(4),
+        request(5)
+    );
+    let results = [a, b, c, d, e, f];
+    assert_eq!(
+        results
+            .iter()
+            .filter(|(status, _)| *status == StatusCode::OK)
+            .count(),
+        1
+    );
+    assert!(results
+        .iter()
+        .all(|(status, _)| matches!(*status, StatusCode::OK | StatusCode::CONFLICT)));
+    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users")
+        .fetch_one(&app.state.db)
+        .await
+        .unwrap();
+    assert_eq!(count, 1);
+}

@@ -10,10 +10,11 @@ const apiTarget = process.env.CDP_API_URL ?? "http://127.0.0.1:8585";
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
+    // Preserve the browser Host so the API same-origin guard accepts dev writes.
     proxy: {
-      "/api": apiTarget,
-      "/collect": apiTarget,
-      "/t.js": apiTarget,
+      "/api": { target: apiTarget, changeOrigin: false },
+      "/collect": { target: apiTarget, changeOrigin: false },
+      "/t.js": { target: apiTarget, changeOrigin: false },
     },
   },
   build: {
