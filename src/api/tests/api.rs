@@ -1797,3 +1797,80 @@ async fn concurrent_setup_creates_exactly_one_administrator() {
         .unwrap();
     assert_eq!(count, 1);
 }
+
+#[tokio::test]
+async fn engagement_cohorts_match_lists_exports_and_site_access() {
+    let t = TestApp::new().await;
+    let admin = t.admin().await;
+    let (uid, member) = t.member(&admin, "atlas").await;
+    let (site_id, _) = t
+        .site(&admin, json!({"name":"Visible","member_ids":[uid]}))
+        .await;
+    let (hidden, _) = t.site(&admin, json!({"name":"Hidden"})).await;
+    for (i, days) in [0, 3, 8, 20, 31, 60].into_iter().enumerate() {
+        t.past_view(site_id, &format!("atlas-person-{i}"), "/", days)
+            .await;
+    }
+    // One member and one anonymous visitor in each disjoint recency bucket.
+    sqlx::query("UPDATE people SET email = 'member-' || id || '@example.com' WHERE site_id=? AND id % 2 = 1")
+        .bind(site_id).execute(&t.state.db).await.unwrap();
+    t.past_view(hidden, "hidden-person", "/", 0).await;
+    let overview = t
+        .get(&member, &format!("/api/sites/{site_id}/overview"))
+        .await;
+    let far_page = t
+        .get(
+            &member,
+            &format!("/api/sites/{site_id}/people?page=9223372036854775807"),
+        )
+        .await;
+    assert!(far_page["items"].as_array().unwrap().is_empty());
+    assert_eq!(
+        overview["engagement"],
+        json!([
+            {"activity":"recent","member":1,"anonymous":1},
+            {"activity":"cooling","member":1,"anonymous":1},
+            {"activity":"dormant","member":1,"anonymous":1}
+        ])
+    );
+    for activity in ["recent", "cooling", "dormant"] {
+        for kind in ["member", "anonymous"] {
+            let query = format!("activity={activity}&kind={kind}");
+            let list = t
+                .get(&member, &format!("/api/sites/{site_id}/people?{query}"))
+                .await;
+            assert_eq!(list["total"], 1);
+            let csv = t
+                .get(
+                    &member,
+                    &format!("/api/sites/{site_id}/people/export?{query}"),
+                )
+                .await;
+            assert_eq!(csv.as_str().unwrap().lines().count(), 2);
+        }
+    }
+    assert_eq!(
+        t.call(
+            Some(&member),
+            Method::GET,
+            &format!("/api/sites/{hidden}/overview"),
+            None
+        )
+        .await
+        .0,
+        StatusCode::NOT_FOUND
+    );
+    for suffix in ["people?activity=bogus", "people/export?activity=bogus"] {
+        assert_eq!(
+            t.call(
+                Some(&admin),
+                Method::GET,
+                &format!("/api/sites/{site_id}/{suffix}"),
+                None
+            )
+            .await
+            .0,
+            StatusCode::BAD_REQUEST
+        );
+    }
+}

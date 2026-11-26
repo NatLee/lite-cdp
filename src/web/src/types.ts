@@ -108,7 +108,10 @@ export interface Person {
 
 export type PeopleSort = "last_seen" | "first_seen" | "pageviews";
 
+export type Activity = "recent" | "cooling" | "dormant";
+
 export interface PeopleFilter {
+  activity?: Activity;
   kind?: PersonKind;
   q?: string;
   label_id?: number;
@@ -210,6 +213,7 @@ export interface Period {
 }
 
 export interface Overview {
+  engagement: { activity: Activity; member: number; anonymous: number }[];
   totals: { people: number; identified: number; anonymous: number };
   last_7_days: Period;
   previous_7_days: Period;

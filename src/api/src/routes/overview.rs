@@ -2,12 +2,14 @@
 
 use std::collections::HashMap;
 
+use super::people::Activity;
 use axum::{
     extract::{Path, Query, State},
     Json,
 };
 use chrono::{DateTime, Duration, NaiveTime, Utc};
 use serde::{Deserialize, Serialize};
+use sqlx::QueryBuilder;
 
 use crate::{
     auth::CurrentUser, db, error::AppResult, routes::sites::ensure_visible, state::AppState,
@@ -76,7 +78,15 @@ struct RecentPerson {
 }
 
 #[derive(Serialize)]
+struct Engagement {
+    activity: Activity,
+    member: i64,
+    anonymous: i64,
+}
+
+#[derive(Serialize)]
 pub struct Overview {
+    engagement: Vec<Engagement>,
     totals: Totals,
     last_7_days: Window,
     previous_7_days: Window,
@@ -210,7 +220,20 @@ pub async fn overview(
     .fetch_all(&state.db)
     .await?;
 
+    let mut engagement = Vec::new();
+    for activity in [Activity::Recent, Activity::Cooling, Activity::Dormant] {
+        let mut qb = QueryBuilder::new("SELECT COALESCE(SUM(p.email != ''), 0), COALESCE(SUM(p.email = ''), 0) FROM people p WHERE p.site_id = ");
+        qb.push_bind(site_id);
+        activity.push(&mut qb, now);
+        let (member, anonymous): (i64, i64) = qb.build_query_as().fetch_one(&state.db).await?;
+        engagement.push(Engagement {
+            activity,
+            member,
+            anonymous,
+        });
+    }
     Ok(Json(Overview {
+        engagement,
         totals: Totals {
             people,
             identified,
