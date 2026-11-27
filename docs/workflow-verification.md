@@ -25,7 +25,7 @@ git diff --check
 
 1. 選訪客蔡欣怡（`person_id=63`）與 `session:demo1v00062s1`，航圖顯示這次來訪的 5 筆已載入事件。核對個人連結、session 選項與事件數，沒有 session ID 的事件各自分組。
 2. 以鍵盤選中 `signup` 事件（`id=1837`），EVENT FOCUS 顯示 `/signup`。session 值保持不變；畫面沒有把其他人的事件或其他來訪混在這條路徑。
-3. 點真實「開啟個人旅程」連結，URL 仍是同一人，保留「所有事件」條件；腳本讀取所有 API 分頁、載入 UI 的「更早的」直到結束，逐筆列表的 46 筆與 API 完全一致，再選回同一 session、同一事件。截圖為頁首與逐筆紀錄開頭，並非宣稱整條時間軸在一個視窗內。
+3. 點真實「開啟個人旅程」連結，URL 仍是同一人，保留「所有事件」條件；腳本讀取所有 API 分頁、載入 UI 的「更早的」直到結束，逐筆列表筆數與 API 分頁總數一致（46 筆），再選回同一 session、同一事件。截圖為頁首與逐筆紀錄開頭，並非宣稱整條時間軸在一個視窗內。
 
 實跑輸出：`PASS: visitor #63, session:demo1v00062s1, event #1837 stay consistent across 3 frames; 46 profile events verified; keyboard/mobile no overflow or page errors; read-only.`
 
