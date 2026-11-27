@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router";
 import { api } from "../api";
+import { JourneyExplorer } from "../components/JourneyExplorer";
 import { PageBody, useSite } from "../components/Layout";
 import {
   BarList,
@@ -83,7 +84,7 @@ export function OverviewPage() {
       )}
       {data && data.totals.people > 0 && (
         <div className="flex flex-col gap-4">
-          <EngagementAtlas data={data} base={base} />
+          <JourneyExplorer key={site.id} siteId={site.id} />
           <div className="atlas-metrics grid grid-cols-2 gap-4 lg:grid-cols-4">
             <StatCard
               label="累計訪客"
@@ -126,7 +127,13 @@ export function OverviewPage() {
               />
             </StatCard>
           </div>
+          <div className="observatory-section-title">
+            <span>02 / AUDIENCE & SIGNAL</span>
+            <h2>從一段旅程，到整體樣貌。</h2>
+            <p>目前的訪客分布，以及最近 30 天的流量。</p>
+          </div>
           <TrafficExplorer daily={data.daily} />
+          <EngagementAtlas data={data} base={base} />
           <div className="atlas-insights grid grid-cols-1 gap-4 lg:grid-cols-2">
             <section className="card">
               <CardHeader

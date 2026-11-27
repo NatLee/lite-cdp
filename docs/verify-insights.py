@@ -51,6 +51,26 @@ async def main():
             await page.evaluate("theme=>localStorage.setItem('cdp.theme',theme)",theme)
             await go(base+"/overview")
             assert await page.locator("html").evaluate("el=>el.classList.contains('dark')")==(theme=="dark")
+            # The route is built from recorded events, not inferred transitions.
+            people=await json_get(f"/api/sites/{sid}/people?sort=last_seen&per_page=6")
+            for index,person in enumerate(people["items"][:2]):
+                await page.locator(".visitor-selector > button").nth(index).click()
+                await expect(page.get_by_role("link",name="開啟個人旅程")).to_have_attribute("href",f"/s/{sid}/people/{person['id']}")
+                events=await json_get(f"/api/sites/{sid}/people/{person['id']}/events?limit=50")
+                groups={}
+                for event in events["items"]:
+                    groups.setdefault(f"session:{event['session_id']}" if event["session_id"] else f"event:{event['id']}",[]).append(event)
+                await expect(page.get_by_label("選擇來訪").locator("option")).to_have_count(len(groups))
+                for session,items in list(groups.items())[:2]:
+                    await page.get_by_label("選擇來訪").select_option(session)
+                    await expect(page.locator(".journey-point")).to_have_count(len(items))
+                    ordered=sorted(items,key=lambda e:(e["created_at"],e["id"]))
+                    target=page.locator(".journey-point").last
+                    await target.focus()
+                    await page.keyboard.press("Enter")
+                    await expect(target).to_have_attribute("aria-pressed","true")
+                    await expect(page.locator(".focus-description code")).to_have_text(ordered[-1]["path"] or "未附頁面路徑")
+                assert not await page.evaluate("document.documentElement.scrollWidth > innerWidth")
             await page.get_by_role("button",name="每日訪客",exact=True).click()
             slider=page.get_by_role("slider",name="圖表日期")
             await slider.focus()
