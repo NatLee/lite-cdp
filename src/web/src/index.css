@@ -1998,3 +1998,8 @@ body {
     font-size: 11px;
   }
 }
+
+/* First account creation uses the existing project identity and spacing. */
+.first-login-note { margin-bottom: 24px; padding: 16px; border: 1px solid currentColor; border-radius: 4px; }
+.first-login-note .eyebrow { margin-bottom: 8px; font-size: 10px; }
+.first-login-note p:last-child { font-size: 12px; line-height: 1.8; }

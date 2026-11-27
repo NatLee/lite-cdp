@@ -20,6 +20,7 @@ test("第一次使用要先建立管理員", async () => {
 
   await userEvent.type(await screen.findByLabelText("帳號"), "nat");
   await userEvent.type(screen.getByLabelText("密碼"), "correct horse");
+  await userEvent.type(screen.getByLabelText("確認密碼"), "correct horse");
   await userEvent.click(screen.getByRole("button", { name: "建立管理員" }));
 
   expect(await screen.findByRole("button", { name: "登出" })).toBeInTheDocument();

@@ -1,7 +1,7 @@
 import { Connections } from "./access/Connections";
 import { Authorize } from "./access/Authorize";
 import { ContinueAuthorization } from "./access/ContinueAuthorization";
-import { safeAuthorizeNext } from "./access/navigation";
+import { safeAuthorizeNext, providerErrorMessage } from "./access/navigation";
 import { Globe } from "lucide-react";
 import { Link, Navigate, Route, Routes, useLocation } from "react-router";
 import { Layout, PageBody, SiteScope, useSites } from "./components/Layout";
@@ -10,6 +10,7 @@ import { useApp, useUser } from "./context";
 import { Install } from "./pages/Install";
 import { Labels } from "./pages/Labels";
 import { Login } from "./pages/Login";
+import { FirstLogin } from "./pages/FirstLogin";
 import { OverviewPage } from "./pages/Overview";
 import { Pages } from "./pages/Pages";
 import { People } from "./pages/People";
@@ -49,6 +50,7 @@ function Home() {
 export function App() {
   const { auth, authError } = useApp();
   const location=useLocation();
+  const next=safeAuthorizeNext(location.search);
   if (!auth) {
     return (
       <div className="mx-auto max-w-md px-4 py-10">
@@ -56,10 +58,20 @@ export function App() {
       </div>
     );
   }
-  // 還沒登入（或還沒有任何帳號）：只有登入頁
-  if (!auth.user) return <Login setupRequired={auth.setup_required} />;
-  const next=safeAuthorizeNext(location.search);
+  if (!auth.user) {
+    const path = auth.setup_required ? "/first-login" : "/login";
+    const params = new URLSearchParams();
+    if (next) params.set("next", next);
+    if (!auth.setup_required && providerErrorMessage(location.search)) {
+      params.set("access_error", new URLSearchParams(location.search).get("access_error")!);
+    }
+    const search = params.size ? `?${params}` : "";
+    // Canonicalize entry and drop untrusted continuation parameters.
+    if (location.pathname !== path || location.search !== search) return <Navigate to={path + search} replace />;
+    return auth.setup_required ? <FirstLogin /> : <Login />;
+  }
   if(next)return <ContinueAuthorization to={next}/>;
+  if (["/login", "/first-login"].includes(location.pathname)) return <Navigate to="/" replace />;
   return (
     <Routes>
       <Route path="access/authorize" element={<Authorize/>}/>

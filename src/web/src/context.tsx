@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { api, UNAUTHORIZED_EVENT } from "./api";
+import { api, ApiError, UNAUTHORIZED_EVENT } from "./api";
 import type { AuthState, Meta, User } from "./types";
 
 interface AppState {
@@ -39,8 +39,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setup = useCallback(async (input: { username: string; display_name: string; password: string }) => {
-    const user = await api.setup(input);
-    setAuth({ setup_required: false, user });
+    try {
+      const user = await api.setup(input);
+      setAuth({ setup_required: false, user });
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        // A conflict proves setup is closed, even if the refresh is offline.
+        setAuth({ setup_required: false, user: null });
+        try { setAuth(await api.authState()); } catch { /* Keep the confirmed closed state. */ }
+      }
+      throw error;
+    }
   }, []);
 
   const logout = useCallback(async () => {
