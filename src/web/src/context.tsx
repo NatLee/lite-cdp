@@ -46,7 +46,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (error instanceof ApiError && error.status === 409) {
         // A conflict proves setup is closed, even if the refresh is offline.
         setAuth({ setup_required: false, user: null });
-        try { setAuth(await api.authState()); } catch { /* Keep the confirmed closed state. */ }
+        try {
+          const refreshed = await api.authState();
+          // A login may finish while the stale setup-state request is pending.
+          setAuth(current => current?.user ? current : { ...refreshed, setup_required: false });
+        } catch { /* Keep the confirmed closed state. */ }
       }
       throw error;
     }

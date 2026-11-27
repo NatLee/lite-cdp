@@ -1,4 +1,4 @@
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { act, render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router";
 import { expect, test } from "vitest";
@@ -88,4 +88,28 @@ test("login retains recognized external-provider failure feedback", async () => 
   show("/login?access_error=access_denied");
   await screen.findByRole("button", {name:"登入"});
   expect(screen.getByTestId("location")).toHaveTextContent("/login?access_error=access_denied");
+});
+
+
+test("a delayed setup-conflict refresh cannot replace a newer signed-in session", async () => {
+  let release!: (state: {setup_required:boolean;user:null}) => void;
+  const delayed = new Promise<{setup_required:boolean;user:null}>(resolve => {release=resolve;});
+  const authState=vi.spyOn(api,"authState")
+    .mockResolvedValueOnce({setup_required:true,user:null})
+    .mockReturnValueOnce(delayed);
+  fakeApi({
+    "POST /auth/setup": () => {throw new ApiError(409,"already initialized",null);},
+    "POST /auth/login": () => ({id:1,username:"nat",display_name:"Nat",email:"",role:"admin"}),
+  });
+  show(); await fill();
+  await userEvent.click(screen.getByRole("button", {name:"建立管理員"}));
+  await screen.findByRole("button", {name:"登入"});
+  await userEvent.type(screen.getByLabelText("帳號"), "nat");
+  await userEvent.type(screen.getByLabelText("密碼"), "correct horse");
+  await userEvent.click(screen.getByRole("button", {name:"登入"}));
+  await screen.findByRole("button", {name:"登出"});
+  await act(async () => {release({setup_required:false,user:null}); await delayed;});
+  expect(screen.getByRole("button", {name:"登出"})).toBeInTheDocument();
+  expect(screen.queryByRole("button", {name:"登入"})).not.toBeInTheDocument();
+  authState.mockRestore();
 });
