@@ -20,6 +20,7 @@ use std::collections::HashMap;
 
 pub(crate) fn router(kit: AccessKit) -> Router {
     Router::new()
+        .merge(crate::registration::router())
         .route("/api/access/providers", get(providers))
         .route("/api/access/overview", get(overview))
         .route("/api/access/identities", get(identity_list))
@@ -530,7 +531,7 @@ async fn identity_link(
             "Link does not accept account parameters",
         ));
     }
-    crate::providers::start(&kit, &provider, &h, true, None).await
+    crate::providers::start(&kit, &provider, &h, true, false, None).await
 }
 async fn provider_login(
     State(kit): State<AccessKit>,
@@ -548,11 +549,23 @@ async fn provider_login(
         ),
         30,
     )?;
+    if q.get("intent").map(String::as_str) == Some("register") {
+        kit.public_rate(
+            format!(
+                "registration-peer:{}",
+                peer.as_ref()
+                    .map(|p| p.0 .0.ip().to_string())
+                    .unwrap_or_else(|| "unknown-peer".into())
+            ),
+            5,
+        )?;
+    }
     match crate::providers::start(
         &kit,
         &provider,
         &h,
         false,
+        q.get("intent").map(String::as_str) == Some("register"),
         q.get("next").map(String::as_str).filter(|s| !s.is_empty()),
     )
     .await

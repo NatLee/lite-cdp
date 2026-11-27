@@ -34,7 +34,60 @@ pub struct DomainOperation {
     pub required_scope: &'static str,
     pub read_only: bool,
 }
+pub struct RegistrationUser {
+    pub username: String,
+    pub display_name: String,
+    pub password_hash: String,
+    pub account_status: String,
+    pub password_login_enabled: bool,
+}
+pub struct RegistrationAccount {
+    pub status: String,
+    pub password_login_enabled: bool,
+}
 pub trait Host: Send + Sync + 'static {
+    fn registration_admin<'a>(
+        &'a self,
+        connection: &'a mut sqlx::SqliteConnection,
+        headers: &'a HeaderMap,
+        user_id: i64,
+    ) -> HostFuture<'a, bool> {
+        let _ = (connection, headers, user_id);
+        Box::pin(async { Err(AccessError::unavailable()) })
+    }
+    fn registration_count<'a>(
+        &'a self,
+        connection: &'a mut sqlx::SqliteConnection,
+    ) -> HostFuture<'a, i64> {
+        let _ = connection;
+        Box::pin(async { Err(AccessError::unavailable()) })
+    }
+    fn registration_create<'a>(
+        &'a self,
+        connection: &'a mut sqlx::SqliteConnection,
+        user: RegistrationUser,
+    ) -> HostFuture<'a, i64> {
+        let _ = (connection, user);
+        Box::pin(async { Err(AccessError::unavailable()) })
+    }
+    fn registration_account<'a>(
+        &'a self,
+        connection: &'a mut sqlx::SqliteConnection,
+        user_id: i64,
+    ) -> HostFuture<'a, Option<RegistrationAccount>> {
+        let _ = (connection, user_id);
+        Box::pin(async { Err(AccessError::unavailable()) })
+    }
+    fn registration_set_status<'a>(
+        &'a self,
+        connection: &'a mut sqlx::SqliteConnection,
+        user_id: i64,
+        status: &'a str,
+    ) -> HostFuture<'a, bool> {
+        let _ = (connection, user_id, status);
+        Box::pin(async { Err(AccessError::unavailable()) })
+    }
+
     fn cookie_principal<'a>(
         &'a self,
         headers: &'a HeaderMap,

@@ -411,10 +411,16 @@ async fn personal_events_require_explicit_people_scope_and_current_site_membersh
 
 #[test]
 fn access_schema_is_the_frozen_snapshot() {
+    assert!(
+        include_str!("../migrations/0004_registration.sql").starts_with(include_str!(
+            "../../../crates/access-kit/migrations/0003_registration.sql"
+        ))
+    );
     assert_eq!(
         concat!(
             include_str!("../migrations/0002_access.sql"),
-            include_str!("../migrations/0003_access_client_registration.sql")
+            include_str!("../migrations/0003_access_client_registration.sql"),
+            include_str!("../../../crates/access-kit/migrations/0003_registration.sql")
         ),
         access_kit::SCHEMA_SQL
     );

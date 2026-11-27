@@ -59,5 +59,11 @@ class SnapshotTests(unittest.TestCase):
             new=snapshot.manifest(root)
             self.assertEqual(new['schema_version'],2)
             self.assertNotEqual(old['schema_sha256'],new['schema_sha256'])
+            (root/'migrations/0003_registration.sql').write_text('registration')
+            third=snapshot.manifest(root)
+            self.assertEqual(third['schema_version'],3)
+            self.assertNotEqual(new['schema_sha256'],third['schema_sha256'])
+            (root/'SNAPSHOT.json').write_text(json.dumps(third))
+            self.assertEqual(snapshot.check(root),third)
 
 if __name__ == '__main__':unittest.main()

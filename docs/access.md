@@ -1,6 +1,6 @@
 # 連線與存取
 
-既有密碼、管理員／成員與站台成員權限持續生效。GitHub、Google 僅供本人登入後明確綁定；不因相同 email 合併、不自動建立帳號。停用帳號或移除站台權限，下一次 API／MCP 操作立即重讀目前權限。
+既有密碼、管理員／成員與站台成員權限持續生效。GitHub、Google 支援既有帳號登入與明確綁定；管理員開放註冊後，也可從 `/register` 申請成員帳號。不因相同 email 合併帳號。停用帳號或移除站台權限，下一次 API／MCP 操作立即重讀目前權限。
 
 ## 啟用外部登入
 
@@ -35,3 +35,9 @@ OAuth 公開 client 由管理員在原生頁面登記精確 redirect URI，使�
 ## 快照
 
 不可變核心：`crates/access-kit`；來源 SHA256 `950710417855acd38c245c50c1facb6e456b45df9c6be2c6fb804f1f7a47082a`，schema SHA256 `5a6dfc0ee83c70fce2cb884cbd1541f5ab8e49487cea76ae009a86f10fc26157`。`src/api/migrations/0002_access.sql` 加 `0003_access_client_registration.sql` 與核心 schema byte-identical。以 `python crates/access-kit/scripts/snapshot.py --check` 核對。
+
+## 使用者註冊與管理員審核
+
+一般使用者可透過 `/register` 使用帳號密碼或已設定的 Google／GitHub 申請帳號。管理員可選擇關閉註冊（預設）、註冊後待審核、直接開放；待審核及拒絕帳號沒有應用、API 或 MCP 存取權。第一位管理員仍由 `/first-login` 建立，管理員直接新增成員不受公開註冊政策限制。
+
+註冊政策、審核結果與原因保存在管理後台；只有第三方登入的帳號須保留至少一種登入方式。這裡的使用者註冊與 `ACCESS_DYNAMIC_CLIENT_REGISTRATION` 控制的 OAuth 應用程式註冊是兩個獨立設定。新版採附加資料庫遷移，保留既有帳號的啟用狀態；本輪驗證見 [registration-verification.md](registration-verification.md)。

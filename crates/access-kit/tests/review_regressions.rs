@@ -325,6 +325,10 @@ async fn schema_upgrade_preserves_managed_clients() {
         .execute(&db)
         .await
         .unwrap();
+    sqlx::raw_sql(include_str!("../migrations/0003_registration.sql"))
+        .execute(&db)
+        .await
+        .unwrap();
     let _kit = AccessKit::new(
         db.clone(),
         AccessConfig::for_origin("http://127.0.0.1:9999").unwrap(),

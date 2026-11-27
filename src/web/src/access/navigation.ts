@@ -7,6 +7,10 @@ export function safeAuthorizeNext(search: string): string | null {
 }
 
 const providerErrors: Record<string, string> = {
+  account_pending: "帳號等待管理員審核，核准後才能登入。",
+  account_rejected: "帳號申請未獲核准，請聯絡管理員。",
+  registration_closed: "目前未開放註冊，請聯絡管理員。",
+  setup_required: "請先建立第一位管理員。",
   identity_not_linked: "這個外部帳號尚未綁定。請先以原帳號登入，再到連線與存取綁定。",
   identity_conflict: "這個外部帳號已綁定其他帳號，請改用目前帳號的登入方式。",
   state_invalid: "登入或綁定請求已過期，或不屬於目前瀏覽器。請重新開始。",

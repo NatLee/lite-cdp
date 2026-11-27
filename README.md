@@ -6,7 +6,7 @@
   <a href="https://github.com/NatLee/lite-cdp/actions/workflows/ci.yml"><img src="https://github.com/NatLee/lite-cdp/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <img src="https://img.shields.io/badge/backend-Rust%20%2B%20axum-b7410e" alt="Rust + axum">
   <img src="https://img.shields.io/badge/frontend-React%20%2B%20Tailwind-124bb6" alt="React + Tailwind">
-  <img src="https://img.shields.io/badge/docker-one%20image-2496ed" alt="Docker">
+  <img src="https://img.shields.io/badge/docker-nginx%20%2B%20API-2496ed" alt="Docker">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT">
 </p>
 
@@ -14,7 +14,7 @@
 
 Lite CDP 是一個自己架的小型顧客資料平台。在網站上貼一行程式碼，它就開始記每個訪客看了哪些頁、點了什麼；訪客登入或留下 email 的那一刻，之前匿名看過的紀錄會併到這個人身上。接著用規則幫人貼標籤，再用標籤和條件組出名單，匯出成 CSV 拿去寄信或投廣告。
 
-一個 Docker 映像檔就是全部：Rust 後端、React 前端、SQLite 資料庫。資料留在你自己的機器上。
+一份 Docker Compose 啟動 nginx 前端與內部 Rust API，資料存於 SQLite。資料留在你自己的機器上。
 
 ## 三步讀懂一次來訪
 
@@ -109,6 +109,18 @@ git clone https://github.com/NatLee/lite-cdp.git
 cd lite-cdp
 docker compose up -d --build
 ```
+
+只有 nginx 發布 `8585`；前端資產由 nginx 提供，API、OAuth 與 MCP 轉送至內部 `lite-cdp`。資料仍保存於原本的 SQLite volume。
+
+```mermaid
+flowchart LR
+  Browser[瀏覽器 / API / MCP] -->|:8585| Nginx[nginx]
+  Nginx --> Static[前端靜態檔案]
+  Nginx --> API[內部 Rust API]
+  API --> SQLite[(SQLite volume)]
+```
+
+瀏覽器網址須與 `ACCESS_PUBLIC_URL` 完全相同；預設使用 `http://127.0.0.1:8585`。正式 HTTPS 網域、既有 URL 變數、代理路由與升級方式見 [nginx 部署說明](docs/nginx-deployment.md)。
 
 打開 <http://127.0.0.1:8585>，第一次會請你建立管理員帳號。接著：
 
@@ -252,8 +264,20 @@ API 和收資料的格式在 [docs/api.md](docs/api.md)。
 
 第一次開啟空白安裝時，首頁、登入頁和需要登入的頁面都會自動導向 `/first-login`。輸入 3–32 個英文字母、數字或 `. _ -` 的帳號、選填顯示名稱，以及 8–200 個字元的密碼與確認密碼，按「建立管理員」後即以新管理員身份進入工作空間。密碼不一致時不會送出請求。
 
-這個頁面只用來建立第一位管理員。有帳號的安裝會改顯示 `/login`；其他成員由管理員在既有設定頁新增。若另一位管理員已先完成設定，舊頁面會自動轉成登入。透過 OAuth 登入的合法本站授權流程會在建立帳號後接續進行。
+這個頁面只用來建立第一位管理員。有帳號的安裝會改顯示 `/login`；其他成員可由管理員新增，或依註冊設定自行申請。若另一位管理員已先完成設定，舊頁面會自動轉成登入。透過 OAuth 登入的合法本站授權流程會在建立帳號後接續進行。
 
 Docker 對外網址請維持 `CDP_PUBLIC_URL` 與 `ACCESS_PUBLIC_URL` 同源。操作與實際瀏覽器驗證見 [首次登入驗證紀錄](docs/first-login-verification.md)。
 
 ![首次登入頁](docs/images/first-login-1440-light.png)
+
+## 成員註冊與審核
+
+`/first-login` 只用來建立第一位管理員。後續成員可從登入頁的「註冊帳號」進入 `/register`；新安裝預設關閉註冊。管理員可在「設定 → 註冊與審核」選擇關閉、審核後開通，或開放立即註冊。關閉只停止新申請，仍可處理已送出的申請。
+
+密碼註冊包含確認密碼；帳號為 3–64 個英數字或 `. _ -`，密碼為 12–256 個字元，顯示名稱選填、最多 100 個字元。設定 Google／GitHub 後，註冊頁只顯示可用的供應商。第三方註冊會建立一般成員，不會依電子郵件合併既有帳號；原有第三方「登入」入口仍只登入已綁定的帳號。
+
+待審核或已拒絕的帳號無法進入工作區，也無法使用 API／MCP。管理員可依狀態分頁查看申請、核准或填寫原因後拒絕；下方處理紀錄保留申請、審核及註冊設定變更的時間與操作者。既有帳號的停用／啟用不會取代註冊審核。
+
+[註冊與審核驗證紀錄](docs/registration-verification.md) 提供測試範圍與實際瀏覽器截圖。
+
+實際 Chrome 畫面：[註冊頁・桌面淺色](docs/images/registration-register-desktop-light.png) · [管理員審核・手機深色](docs/images/registration-review-mobile-dark.png)。完整桌面／手機、淺色／深色共八張截圖見驗證紀錄。 可在建置後執行 `python docs/verify-registration.py --binary /path/to/binary` 重現完整流程；需安裝 Python Playwright 與 Google Chrome。

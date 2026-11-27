@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+import { RegistrationLoginLink, RegistrationNotice } from "../registration/RegisterForm";
 import { ProviderButtons } from "../access/ProviderButtons";
 import { LogIn, UserPlus } from "lucide-react";
 import { useRef, useState } from "react";
@@ -6,7 +8,7 @@ import { useApp } from "../context";
 import { errorText } from "../lib/hooks";
 
 /** Shared themed account surface; lifecycle is owned by the route pages. */
-export function AuthScreen({ setupRequired }: { setupRequired: boolean }) {
+export function AuthScreen({ setupRequired, children }: { setupRequired: boolean; children?: ReactNode }) {
   const { login, setup, meta } = useApp();
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -90,7 +92,7 @@ export function AuthScreen({ setupRequired }: { setupRequired: boolean }) {
         </div>
       </section>
       <div className="atlas-login-form">
-        <form
+        {children ?? <form
           className="card w-full max-w-sm p-6"
           aria-busy={busy}
           onSubmit={(e) => {
@@ -112,7 +114,7 @@ export function AuthScreen({ setupRequired }: { setupRequired: boolean }) {
           </div>
           {setupRequired && <div className="first-login-note">
             <p className="eyebrow">01 建立帳號 / 02 邀請團隊</p>
-            <p>由你保管工作空間的第一把鑰匙。建立後即可登入，再由管理員新增其他成員。</p>
+            <p>由你保管工作空間的第一把鑰匙。建立後即可登入，再由管理員設定成員註冊與審核。</p>
           </div>}
           <label className="label" htmlFor="login-username">
             帳號
@@ -180,8 +182,8 @@ export function AuthScreen({ setupRequired }: { setupRequired: boolean }) {
               ? "這個帳號可以新增網站和其他帳號。之後這個畫面就不會再出現。"
               : "沒有帳號或忘記密碼，請找管理員。"}
           </p>
-          {!setupRequired && <ProviderButtons/>}
-        </form>
+          {!setupRequired && <><RegistrationNotice /><RegistrationLoginLink /><ProviderButtons/></>}
+        </form>}
         <p className="login-footer">YOUR DATA. YOUR CUSTOMER STORIES.</p>
       </div>
     </div>

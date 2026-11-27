@@ -1,3 +1,4 @@
+import { Register } from "./pages/Register";
 import { Connections } from "./access/Connections";
 import { Authorize } from "./access/Authorize";
 import { ContinueAuthorization } from "./access/ContinueAuthorization";
@@ -58,6 +59,7 @@ export function App() {
       </div>
     );
   }
+  if (!auth.user && !auth.setup_required && location.pathname === "/register") return <Register />;
   if (!auth.user) {
     const path = auth.setup_required ? "/first-login" : "/login";
     const params = new URLSearchParams();
@@ -65,13 +67,14 @@ export function App() {
     if (!auth.setup_required && providerErrorMessage(location.search)) {
       params.set("access_error", new URLSearchParams(location.search).get("access_error")!);
     }
+    if (!auth.setup_required && new URLSearchParams(location.search).get("registration") === "pending") params.set("registration", "pending");
     const search = params.size ? `?${params}` : "";
     // Canonicalize entry and drop untrusted continuation parameters.
     if (location.pathname !== path || location.search !== search) return <Navigate to={path + search} replace />;
     return auth.setup_required ? <FirstLogin /> : <Login />;
   }
   if(next)return <ContinueAuthorization to={next}/>;
-  if (["/login", "/first-login"].includes(location.pathname)) return <Navigate to="/" replace />;
+  if (["/login", "/first-login", "/register"].includes(location.pathname)) return <Navigate to="/" replace />;
   return (
     <Routes>
       <Route path="access/authorize" element={<Authorize/>}/>

@@ -42,6 +42,76 @@ impl HostAdapter {
     }
 }
 impl Host for HostAdapter {
+    fn registration_admin<'a>(
+        &'a self,
+        connection: &'a mut sqlx::SqliteConnection,
+        headers: &'a HeaderMap,
+        id: i64,
+    ) -> HostFuture<'a, bool> {
+        Box::pin(async move {
+            let Some(token) = auth::read_cookie(headers, auth::COOKIE_NAME) else {
+                return Ok(false);
+            };
+            let hash = Sha256::digest(token.as_bytes())
+                .iter()
+                .map(|b| format!("{b:02x}"))
+                .collect::<String>();
+            Ok(sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.user_id=? AND s.expires_at>? AND u.disabled=0 AND u.account_status='active' AND u.role='admin')").bind(hash).bind(id).bind(crate::db::now()).fetch_one(connection).await?)
+        })
+    }
+
+    fn registration_count<'a>(
+        &'a self,
+        connection: &'a mut sqlx::SqliteConnection,
+    ) -> HostFuture<'a, i64> {
+        Box::pin(async move {
+            Ok(sqlx::query_scalar("SELECT COUNT(*) FROM users")
+                .fetch_one(connection)
+                .await?)
+        })
+    }
+    fn registration_create<'a>(
+        &'a self,
+        connection: &'a mut sqlx::SqliteConnection,
+        user: access_kit::RegistrationUser,
+    ) -> HostFuture<'a, i64> {
+        Box::pin(async move {
+            let id=sqlx::query("INSERT INTO users(username,display_name,password_hash,role,created_at,account_status,password_login_enabled) VALUES(?,?,?,'member',?,?,?)")
+ .bind(&user.username).bind(&user.display_name).bind(&user.password_hash).bind(crate::db::now()).bind(&user.account_status).bind(user.password_login_enabled).execute(connection).await.map_err(|e| if e.as_database_error().is_some_and(|e|e.is_unique_violation()){AccessError::new(StatusCode::CONFLICT,"username_taken","Username is already in use")}else{unavailable()})?.last_insert_rowid();
+            Ok(id)
+        })
+    }
+    fn registration_account<'a>(
+        &'a self,
+        connection: &'a mut sqlx::SqliteConnection,
+        id: i64,
+    ) -> HostFuture<'a, Option<access_kit::RegistrationAccount>> {
+        Box::pin(async move {
+            let row: Option<(String, bool)> = sqlx::query_as(
+                "SELECT account_status,password_login_enabled FROM users WHERE id=?",
+            )
+            .bind(id)
+            .fetch_optional(connection)
+            .await?;
+            Ok(row.map(
+                |(status, password_login_enabled)| access_kit::RegistrationAccount {
+                    status,
+                    password_login_enabled,
+                },
+            ))
+        })
+    }
+    fn registration_set_status<'a>(
+        &'a self,
+        connection: &'a mut sqlx::SqliteConnection,
+        id: i64,
+        status: &'a str,
+    ) -> HostFuture<'a, bool> {
+        Box::pin(async move {
+            Ok(sqlx::query("UPDATE users SET account_status=? WHERE id=? AND account_status='pending' AND role='member'").bind(status).bind(id).execute(connection).await?.rows_affected()==1)
+        })
+    }
+
     fn cookie_principal<'a>(
         &'a self,
         headers: &'a HeaderMap,

@@ -6,14 +6,15 @@ mod types;
 pub use config::AccessConfig;
 pub use error::AccessError;
 pub use types::{
-    CookieSession, DomainOperation, Host, HostFuture, HostPaths, Invocation, Principal, Role,
-    Transport, TrustedPrincipal,
+    CookieSession, DomainOperation, Host, HostFuture, HostPaths, Invocation, Principal,
+    RegistrationAccount, RegistrationUser, Role, Transport, TrustedPrincipal,
 };
 pub const SCHEMA_SQL: &str = concat!(
     include_str!("../migrations/0001_access.sql"),
-    include_str!("../migrations/0002_client_registration.sql")
+    include_str!("../migrations/0002_client_registration.sql"),
+    include_str!("../migrations/0003_registration.sql")
 );
-pub const SCHEMA_VERSION: u32 = 2;
+pub const SCHEMA_VERSION: u32 = 3;
 mod audit;
 mod authorization;
 mod clients;
@@ -22,6 +23,7 @@ mod dispatch;
 mod http;
 mod mcp;
 mod providers;
+mod registration;
 mod tokens;
 use axum::Router;
 use serde_json::Value;

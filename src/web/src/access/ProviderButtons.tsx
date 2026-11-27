@@ -9,7 +9,7 @@ export function ProviderButtons() {
   const [error, setError] = useState("");
   useEffect(() => {
     let current = true;
-    accessRequest<{ items: Provider[] }>("/providers").then(data => { if (current) setProviders(data.items); }).catch(() => { if (current) setError("無法載入外部登入方式，仍可使用原帳號登入。"); });
+    accessRequest<{ items: Provider[] }>("/providers").then(data => { if (current) setProviders(data.items); }).catch(() => { if (current) setError("無法載入外部登入方式，仍可使用其他已設定的方式登入。"); });
     return () => { current = false; };
   }, []);
   const start = (provider: Provider) => {
@@ -17,7 +17,7 @@ export function ProviderButtons() {
     window.location.assign(provider.login_start_url + (next ? `?next=${encodeURIComponent(next)}` : ""));
   };
   return <section className="access-provider-login" aria-label="外部帳號登入">
-    <p>已綁定的帳號可使用外部登入；首次使用請先登入並綁定。</p>
+    <p>已綁定的帳號可使用外部登入；新成員請使用註冊入口，既有成員可登入後綁定。</p>
     {providerErrorMessage(window.location.search) && <p role="alert">{providerErrorMessage(window.location.search)}</p>}
     {error && <p>{error}</p>}
     <div>{providers.map(provider => <div key={provider.provider}>
