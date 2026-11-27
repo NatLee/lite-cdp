@@ -16,14 +16,29 @@ Lite CDP 是一個自己架的小型顧客資料平台。在網站上貼一行�
 
 一個 Docker 映像檔就是全部：Rust 後端、React 前端、SQLite 資料庫。資料留在你自己的機器上。
 
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/images/screenshot-journey-dark.png">
-    <img src="docs/images/screenshot-journey-light.png" alt="顧客行為航圖局部：真實訪客、來訪選擇與逐事件路徑" width="100%">
-  </picture>
-</p>
+## 三步讀懂一次來訪
 
-上圖為總覽中的行為航圖區域；圖中的節點取自 demo 訪客實際儲存的事件。
+以下三張圖來自隔離的內建 demo，連續追蹤同一位訪客、同一個已記錄的 `session_id` 與同一筆事件。封面是獨立的航線插畫，操作圖則取自真實介面。
+
+### 1. 選訪客，再選一次來訪
+
+在總覽左側選一位已辨識的訪客，再用來訪選單選一組事件。圖中路徑依資料庫中的 session 分組，節點等距表示事件順序；沒有 session ID 的事件不會被串成一次來訪。
+
+![步驟一：選定同一位訪客與一次已記錄的來訪（總覽航圖局部）](docs/images/workflow-01.png)
+
+### 2. 選事件，讀取內容
+
+以鍵盤選取自訂事件節點，EVENT FOCUS 隨之顯示名稱、頁面路徑、時間、來源與已記錄屬性。這是選取事件的原始資訊，不代表推測出的轉換率。
+
+![步驟二：同一次來訪中的自訂事件與 EVENT FOCUS（總覽航圖局部）](docs/images/workflow-02.png)
+
+### 3. 開啟同一人的完整時間軸
+
+點「開啟個人旅程」，進入同一人的資料頁。來訪選單仍可選回同一組 session 與事件，下方逐筆紀錄包含此人的其他來訪；更多紀錄可按「更早的」載入。重拍腳本會載入所有分頁並核對事件總數，圖中保留頁面頂部與逐筆紀錄開頭。
+
+![步驟三：同一位訪客的個人時間軸，保留相同來訪與事件](docs/images/workflow-03.png)
+
+前兩張是 1440 px 桌面視窗內的航圖元件裁切；第三張為完整視窗。重拍與資料一致性檢查見 [操作驗證](docs/workflow-verification.md) 與 [capture-workflow.py](docs/capture-workflow.py)。腳本只讀取 demo 資料。
 
 ## 功能
 
@@ -59,17 +74,19 @@ Lite CDP 是一個自己架的小型顧客資料平台。在網站上貼一行�
 
 搜尋、標籤、分群與最近活躍篩選共同整理名單；個人頁的寬幅航圖可切換來訪與事件種類，往下保留逐筆紀錄、載入更早事件、身份、標籤、裝置和來源。
 
-![訪客名單](docs/images/screenshot-people-light.png)
-![個人旅程](docs/images/screenshot-person-light.png)
-
 ### 規則與分群
 
 標籤按事件規則自動計算。分群編輯器保留三組條件，以及隨條件更新的人數與名單預覽。
 
-![分群編輯](docs/images/screenshot-segment-light.png)
-
 <details>
-<summary>完整總覽、標籤、安裝、登入、深色與手機畫面</summary>
+<summary>完整總覽、標籤、安裝、其他功能、登入、深色與手機畫面</summary>
+
+![淺色介面的航圖局部](docs/images/screenshot-journey-light.png)
+![深色介面的航圖局部](docs/images/screenshot-journey-dark.png)
+
+![訪客名單](docs/images/screenshot-people-light.png)
+![個人旅程](docs/images/screenshot-person-light.png)
+![分群編輯](docs/images/screenshot-segment-light.png)
 
 ![完整總覽：行為航圖、每日流量與目前身分分布](docs/images/screenshot-overview-light.png)
 
