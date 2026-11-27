@@ -21,6 +21,8 @@ struct LoginRow {
     role: String,
     password_hash: String,
     disabled: i64,
+    account_status: String,
+    password_login_enabled: bool,
 }
 
 async fn user_count(state: &AppState) -> AppResult<i64> {
@@ -107,14 +109,20 @@ pub async fn login(
     let username = body.username.trim().to_lowercase();
     state.limiter.check(&username)?;
     let row = sqlx::query_as::<_, LoginRow>(
-        "SELECT id, username, display_name, role, password_hash, disabled
+        "SELECT id, username, display_name, role, password_hash, disabled, account_status, password_login_enabled
          FROM users WHERE username = ?",
     )
     .bind(&username)
     .fetch_optional(&state.db)
     .await?;
     let ok = match &row {
-        Some(row) => auth::verify_password(body.password, row.password_hash.clone()).await,
+        Some(row) if row.password_login_enabled => {
+            auth::verify_password(body.password, row.password_hash.clone()).await
+        }
+        Some(_) => {
+            let _ = auth::hash_password(body.password).await;
+            false
+        }
         None => {
             // 帳號不存在時也算一次雜湊，回應時間才不會洩漏帳號存不存在
             let _ = auth::hash_password(body.password).await;
@@ -125,6 +133,13 @@ pub async fn login(
         state.limiter.record_failure(&username);
         return Err(AppError::Unauthorized("帳號或密碼不對".into()));
     };
+    if row.account_status != "active" {
+        return Err(AppError::forbidden(if row.account_status == "pending" {
+            "帳號正等待管理員審核"
+        } else {
+            "帳號申請已被拒絕"
+        }));
+    }
     if row.disabled != 0 {
         return Err(AppError::forbidden("這個帳號已經停用"));
     }

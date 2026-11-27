@@ -40,6 +40,33 @@ impl TestHost {
     }
 }
 impl Host for TestHost {
+    fn registration_admin<'a>(
+        &'a self,
+        _: &'a mut sqlx::SqliteConnection,
+        _: &'a HeaderMap,
+        _: i64,
+    ) -> HostFuture<'a, bool> {
+        Box::pin(async move {
+            Ok(self.admin.load(Ordering::SeqCst) && self.active.load(Ordering::SeqCst))
+        })
+    }
+
+    fn registration_count<'a>(&'a self, _: &'a mut sqlx::SqliteConnection) -> HostFuture<'a, i64> {
+        Box::pin(async { Ok(1) })
+    }
+    fn registration_account<'a>(
+        &'a self,
+        _: &'a mut sqlx::SqliteConnection,
+        _: i64,
+    ) -> HostFuture<'a, Option<RegistrationAccount>> {
+        Box::pin(async {
+            Ok(Some(RegistrationAccount {
+                status: "active".into(),
+                password_login_enabled: true,
+            }))
+        })
+    }
+
     fn cookie_principal<'a>(&'a self, h: &'a HeaderMap) -> HostFuture<'a, Option<CookieSession>> {
         Box::pin(async move {
             Ok((h

@@ -137,9 +137,14 @@ pub(crate) async fn start(
     name: &str,
     h: &HeaderMap,
     link: bool,
+    signup: bool,
     next: Option<&str>,
 ) -> Result<Response, AccessError> {
     let p = provider(kit, name)?;
+    if signup {
+        let mut c = kit.0.db.acquire().await?;
+        crate::registration::require_registration(kit, &mut c).await?;
+    }
     if next.is_some_and(|n| !authorization::valid_next(n) && n != kit.0.host.paths().connections) {
         return Err(AccessError::bad(
             "invalid_next",
@@ -212,7 +217,7 @@ pub(crate) async fn start(
             .url()
             .0
     };
-    sqlx::query("INSERT INTO access_provider_flows(state_hash,provider,purpose,user_id,session_binding,browser_hash,verifier,nonce,next_path,expires_at)VALUES(?,?,?,?,?,?,?,?,?,?)").bind(hash(&state)).bind(name).bind(if link{"link"}else{"login"}).bind(session.as_ref().map(|s|s.principal.user_id)).bind(session.as_ref().map(session_binding)).bind(bh).bind(verifier).bind(nonce).bind(next.unwrap_or(kit.0.host.paths().connections)).bind(now()+300).execute(&kit.0.db).await?;
+    sqlx::query("INSERT INTO access_provider_flows(state_hash,provider,purpose,user_id,session_binding,browser_hash,verifier,nonce,next_path,expires_at)VALUES(?,?,?,?,?,?,?,?,?,?)").bind(hash(&state)).bind(name).bind(if link{"link"}else if signup{"signup"}else{"login"}).bind(session.as_ref().map(|s|s.principal.user_id)).bind(session.as_ref().map(session_binding)).bind(bh).bind(verifier).bind(nonce).bind(next.unwrap_or(kit.0.host.paths().connections)).bind(now()+300).execute(&kit.0.db).await?;
     let mut response = if link {
         crate::http::no_store(json!({"authorization_url":authorization_url.as_str()}))
     } else {
@@ -336,6 +341,7 @@ pub(crate) async fn callback(
         .ok_or_else(|| AccessError::bad("state_invalid", "Invalid sign-in state"))?;
     let row=sqlx::query("SELECT * FROM access_provider_flows WHERE state_hash=? AND provider=? AND expires_at>? AND used_at IS NULL").bind(hash(state)).bind(name).bind(now()).fetch_optional(&kit.0.db).await?.ok_or_else(||AccessError::bad("state_invalid","Expired or replayed sign-in state"))?;
     let link = row.get::<String, _>("purpose") == "link";
+    let signup = row.get::<String, _>("purpose") == "signup";
     let fail_path = if link {
         kit.0.host.paths().connections
     } else {
@@ -355,8 +361,19 @@ pub(crate) async fn callback(
     sqlx::query("INSERT INTO access_identities(id,user_id,provider,subject,linked_at)VALUES(?,?,?,?,?)").bind(random()).bind(user).bind(name).bind(subject).bind(now()).execute(&kit.0.db).await.map_err(|_|AccessError::bad("identity_conflict","Identity is already bound"))?;
    }
    authorization::redirect(kit.0.host.paths().connections)
+  }else if signup {
+   let username=format!("{name}_{}", &random()[..16]);
+   let display=format!("{name} {}", &random()[..6]);
+   let password=crate::registration::hash_password(random()).await?;
+   let (user,status)=crate::registration::create(kit,name,Some(&subject),username,display,password).await?;
+   if status=="pending" { authorization::redirect(&format!("{}?registration=pending",kit.0.host.paths().login)) } else {
+    let cookie=kit.0.host.create_session(user).await?;
+    let mut response=authorization::redirect(&row.get::<String,_>("next_path"))?;
+    response.headers_mut().insert("set-cookie",cookie);Ok(response)
+   }
   }else{
    let user:Option<i64>=sqlx::query_scalar("SELECT user_id FROM access_identities WHERE provider=? AND subject=?").bind(name).bind(subject).fetch_optional(&kit.0.db).await?;let user=user.ok_or_else(||AccessError::bad("identity_not_linked","Sign in with the original account and link this provider first"))?;
+   crate::registration::account_error(kit,user).await?;
    if kit.0.host.active_principal(user).await?.is_none(){return Err(AccessError::bad("account_unavailable","Account is not active"));}
    let cookie=kit.0.host.create_session(user).await?;sqlx::query("UPDATE access_identities SET last_login_at=? WHERE user_id=? AND provider=?").bind(now()).bind(user).bind(name).execute(&kit.0.db).await?;
    let mut response=authorization::redirect(&row.get::<String,_>("next_path"))?;response.headers_mut().insert("set-cookie",cookie);Ok(response)
@@ -378,7 +395,11 @@ pub(crate) fn failure_redirect(
         | "state_invalid"
         | "access_denied"
         | "account_unavailable"
-        | "provider_disabled" => code,
+        | "provider_disabled"
+        | "account_pending"
+        | "account_rejected"
+        | "registration_closed"
+        | "setup_required" => code,
         _ => "provider_unavailable",
     };
     authorization::redirect(&format!("{path}?access_error={safe}"))
@@ -388,18 +409,41 @@ pub(crate) async fn identities(kit: &AccessKit, user: i64) -> Result<Vec<Value>,
     Ok(rows.into_iter().map(|r|{let sub:String=r.get("subject");let suffix=sub.chars().rev().take(4).collect::<String>().chars().rev().collect::<String>();json!({"id":r.get::<String,_>("id"),"provider":r.get::<String,_>("provider"),"subject_mask":format!("…{suffix}"),"linked_at":time(r.get("linked_at")),"last_login_at":credentials::optional_time(r.get("last_login_at"))})}).collect())
 }
 pub(crate) async fn unlink(kit: &AccessKit, user: i64, id: &str) -> Result<(), AccessError> {
-    let changed = sqlx::query("DELETE FROM access_identities WHERE id=? AND user_id=?")
-        .bind(id)
-        .bind(user)
-        .execute(&kit.0.db)
-        .await?
-        .rows_affected();
-    if changed != 1 {
+    let mut tx = kit.0.db.begin_with("BEGIN IMMEDIATE").await?;
+    let exists: Option<String> =
+        sqlx::query_scalar("SELECT id FROM access_identities WHERE id=? AND user_id=?")
+            .bind(id)
+            .bind(user)
+            .fetch_optional(&mut *tx)
+            .await?;
+    if exists.is_none() {
         return Err(AccessError::new(
             StatusCode::NOT_FOUND,
             "not_found",
             "Identity not found",
         ));
     }
+    let account = kit
+        .0
+        .host
+        .registration_account(&mut tx, user)
+        .await?
+        .ok_or_else(AccessError::unauthorized)?;
+    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM access_identities WHERE user_id=?")
+        .bind(user)
+        .fetch_one(&mut *tx)
+        .await?;
+    if !account.password_login_enabled && count <= 1 {
+        return Err(AccessError::bad(
+            "last_login_method",
+            "Add a password or another identity before unlinking the last login method",
+        ));
+    }
+    sqlx::query("DELETE FROM access_identities WHERE id=? AND user_id=?")
+        .bind(id)
+        .bind(user)
+        .execute(&mut *tx)
+        .await?;
+    tx.commit().await?;
     Ok(())
 }
