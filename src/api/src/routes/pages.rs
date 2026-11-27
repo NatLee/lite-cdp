@@ -86,6 +86,8 @@ pub async fn list(
         .into_iter()
         .map(|row| {
             let event = Event {
+                event_id: String::new(),
+                happened_at: None,
                 kind: "pageview",
                 name: String::new(),
                 url: row.url.clone(),

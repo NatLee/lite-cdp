@@ -12,17 +12,17 @@
   /*
    * 設計 token。要換主色只改 --color-brand-*。
    */
-  --color-brand-50: #eff7ff;
-  --color-brand-100: #deefff;
-  --color-brand-200: #b5ddff;
-  --color-brand-300: #86c5ff;
-  --color-brand-400: #50a4ff;
-  --color-brand-500: #2580f4;
-  --color-brand-600: #115fe0;
-  --color-brand-700: #124bb6;
-  --color-brand-800: #163f91;
-  --color-brand-900: #18376f;
-  --color-brand-950: #0d2148;
+  --color-brand-50: #f4f6e8;
+  --color-brand-100: #e9efce;
+  --color-brand-200: #d5e2a2;
+  --color-brand-300: #c7e45b;
+  --color-brand-400: #acc83e;
+  --color-brand-500: #849e1e;
+  --color-brand-600: #596d00;
+  --color-brand-700: #435300;
+  --color-brand-800: #344000;
+  --color-brand-900: #293200;
+  --color-brand-950: #181e00;
 
 }
 
@@ -85,33 +85,33 @@
 
 /* Customer atlas: a horizontal workspace and a connected identity map. */
 @theme {
-  --color-zinc-50: #f4f8fc;
-  --color-zinc-100: #eaf0f8;
-  --color-zinc-200: #d8e2ee;
-  --color-zinc-300: #bbcbdc;
-  --color-zinc-400: #859ab4;
-  --color-zinc-500: #5c7390;
-  --color-zinc-600: #465c77;
-  --color-zinc-700: #34465f;
-  --color-zinc-800: #223149;
-  --color-zinc-900: #142238;
-  --color-zinc-950: #0b1526;
+  --color-zinc-50: #f4f5ef;
+  --color-zinc-100: #e9ebe3;
+  --color-zinc-200: #d4d8cc;
+  --color-zinc-300: #b9c0af;
+  --color-zinc-400: #8d9681;
+  --color-zinc-500: #646d59;
+  --color-zinc-600: #515947;
+  --color-zinc-700: #3e4536;
+  --color-zinc-800: #2b3026;
+  --color-zinc-900: #1b1f18;
+  --color-zinc-950: #101211;
 }
 :root {
   --atlas-paper: #fff;
-  --atlas-rule: #d8e2ee;
-  --atlas-muted: #57728f;
+  --atlas-rule: #d9ddcf;
+  --atlas-muted: #626b58;
 }
 .dark {
-  --atlas-paper: #142238;
-  --atlas-rule: #2c405b;
-  --atlas-muted: #9db4cf;
+  --atlas-paper: #20231f;
+  --atlas-rule: #454a40;
+  --atlas-muted: #b4bba8;
 }
 body {
-  background: #f1f6fc;
+  background: #f4f5ef;
 }
 .dark body {
-  background: #0b1526;
+  background: #101211;
 }
 .atlas-header {
   border-bottom: 1px solid var(--atlas-rule);
@@ -173,7 +173,7 @@ body {
   font-size: 12px;
 }
 .dark .atlas-navigation select {
-  background: #1b2e49;
+  background: #20231f;
 }
 .atlas-nav-link {
   border-radius: 0;
@@ -242,7 +242,7 @@ body {
   margin-top: 4px;
 }
 .atlas-insights > section {
-  border-top: 3px solid #a7cef4;
+  border-top: 3px solid #d9ddcf;
 }
 .atlas-mobile .atlas-navigation {
   display: flex;
@@ -290,14 +290,14 @@ body {
   padding: 64px 48px;
   position: relative;
   overflow: hidden;
-  background: #124bb6;
+  background: #626b58;
   color: white;
   display: flex;
   flex-direction: column;
   justify-content: center;
 }
 .atlas-login-story .eyebrow {
-  color: #b9dbff;
+  color: #d9ddcf;
 }
 .atlas-login-story h2 {
   font-size: clamp(33px, 4vw, 48px);
@@ -309,7 +309,7 @@ body {
 .atlas-login-story p {
   font-size: 13px;
   line-height: 1.8;
-  color: #bedaff;
+  color: #d9ddcf;
 }
 
 .atlas-login-form {
@@ -402,14 +402,14 @@ body {
 
 /* Engagement observatory: categorical coordinates and a real daily signal. */
 :root {
-  --atlas-blue: #175ad1;
-  --atlas-grid: #dce6f3;
-  --atlas-muted: #61708a;
+  --atlas-accent: #596d00;
+  --atlas-grid: #f4f5ef;
+  --atlas-muted: #626b58;
 }
 .dark {
-  --atlas-blue: #70b9ff;
-  --atlas-grid: #2b405b;
-  --atlas-muted: #a1b3cc;
+  --atlas-accent: #c7e45b;
+  --atlas-grid: #454a40;
+  --atlas-muted: #b4bba8;
 }
 .engagement-atlas {
   border: 1px solid var(--atlas-grid);
@@ -424,10 +424,10 @@ body {
   justify-content: space-between;
   gap: 20px;
   padding: 28px 32px;
-  background: #eef6ff;
+  background: #f4f5ef;
 }
 .dark .engagement-heading {
-  background: #162e4a;
+  background: #20231f;
 }
 .engagement-heading h2 {
   font-size: 25px;
@@ -458,7 +458,7 @@ body {
   letter-spacing: -0.06em;
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
-  color: var(--atlas-blue);
+  color: var(--atlas-accent);
 }
 .cohort-map {
   display: grid;
@@ -493,7 +493,7 @@ body {
   width: 6px;
   margin-right: 8px;
   border-radius: 50%;
-  background: #1775ca;
+  background: #626b58;
   box-shadow: none;
 }
 .column-cooling .cohort-beacon {
@@ -517,7 +517,7 @@ body {
 .cohort-row-title > span {
   font-size: 11px;
   letter-spacing: 0.09em;
-  color: var(--atlas-blue);
+  color: var(--atlas-accent);
 }
 .cohort-row-title b {
   font-size: 13px;
@@ -534,20 +534,20 @@ body {
   justify-content: center;
   border-left: 1px solid var(--atlas-grid);
   border-top: 1px solid var(--atlas-grid);
-  color: #1c63bf;
-  background-image: radial-gradient(#aac1da55 0.7px, transparent 0.7px);
+  color: #626b58;
+  background-image: radial-gradient(#d9ddcf55 0.7px, transparent 0.7px);
   background-size: 10px 10px;
   transition: background-color 0.15s;
 }
 .cohort-cell:hover {
-  background-color: #eaf4ff;
+  background-color: #f4f5ef;
 }
 .dark .cohort-cell {
-  color: #83c6ff;
-  background-image: radial-gradient(#42668c70 0.7px, transparent 0.7px);
+  color: #d9ddcf;
+  background-image: radial-gradient(#626b5870 0.7px, transparent 0.7px);
 }
 .dark .cohort-cell:hover {
-  background-color: #1d3652;
+  background-color: #20231f;
 }
 .cohort-cell > svg {
   position: absolute;
@@ -611,7 +611,7 @@ body {
 }
 .cohort-cell:focus-visible {
   z-index: 1;
-  outline: 3px solid var(--atlas-blue);
+  outline: 3px solid var(--atlas-accent);
   outline-offset: -3px;
 }
 .traffic-explorer {
@@ -650,11 +650,11 @@ body {
 }
 .traffic-switch button[aria-pressed="true"] {
   background: var(--atlas-paper);
-  color: var(--atlas-blue);
+  color: var(--atlas-accent);
   box-shadow: none;
 }
 .traffic-switch button:focus-visible {
-  outline: 2px solid var(--atlas-blue);
+  outline: 2px solid var(--atlas-accent);
 }
 .traffic-readout {
   display: flex;
@@ -675,7 +675,7 @@ body {
 .traffic-readout b {
   font-size: 26px;
   letter-spacing: -0.04em;
-  color: var(--atlas-blue);
+  color: var(--atlas-accent);
   font-variant-numeric: tabular-nums;
 }
 .traffic-readout > span:last-child {
@@ -704,12 +704,12 @@ body {
   position: relative;
 }
 .traffic-targets button:hover {
-  background: #318bde0b;
+  background: #626b580b;
 }
 .traffic-targets button:focus-visible {
-  outline: 2px solid var(--atlas-blue);
+  outline: 2px solid var(--atlas-accent);
   outline-offset: -2px;
-  background: #318bde0e;
+  background: #626b580e;
 }
 .traffic-targets button span {
   position: absolute;
@@ -721,7 +721,7 @@ body {
   background: var(--atlas-grid);
 }
 .traffic-targets button[aria-pressed="true"] span {
-  background: var(--atlas-blue);
+  background: var(--atlas-accent);
 }
 .traffic-axis {
   display: flex;
@@ -926,12 +926,12 @@ body {
 .traffic-range {
   width: 100%;
   height: 28px;
-  accent-color: var(--atlas-blue);
+  accent-color: var(--atlas-accent);
   margin-top: 4px;
   cursor: ew-resize;
 }
 .traffic-range:focus-visible {
-  outline: 2px solid var(--atlas-blue);
+  outline: 2px solid var(--atlas-accent);
   outline-offset: 3px;
 }
 
@@ -962,32 +962,32 @@ body {
   }
 }
 .dark .traffic-switch {
-  background: #253852;
+  background: #20231f;
 }
 
 /* Journey Observatory: a precise route instrument on a cool, open workspace. */
 :root {
-  --atlas-blue: #155bd7;
-  --atlas-rule: #d3e1ef;
-  --atlas-muted: #5c7390;
+  --atlas-accent: #596d00;
+  --atlas-rule: #d9ddcf;
+  --atlas-muted: #626b58;
 }
 html.dark {
-  --atlas-blue: #70b9ff;
-  --atlas-rule: #2c405b;
-  --atlas-muted: #a1b3cc;
+  --atlas-accent: #c7e45b;
+  --atlas-rule: #454a40;
+  --atlas-muted: #b4bba8;
 }
 body {
-  background: #edf3f9;
+  background: #f4f5ef;
 }
 .atlas-header {
-  background: #0c2039;
-  color: #dbeaff;
+  background: #20231f;
+  color: #f4f5ef;
   border-bottom: 0;
 }
 .atlas-masthead {
   min-height: 75px;
   padding: 12px 40px;
-  border-bottom: 1px solid #2a3d57;
+  border-bottom: 1px solid #454a40;
 }
 .atlas-header .brand > span > span:first-child {
   font-size: 24px;
@@ -995,56 +995,56 @@ body {
   letter-spacing: -0.05em;
 }
 .atlas-header .brand > span > span:last-child {
-  color: #68a2e1;
+  color: #b4bba8;
   font: 11px var(--font-mono);
   letter-spacing: 0.2em;
   margin-top: 4px;
 }
 .atlas-motto {
-  border-color: #2c435e;
-  color: #87a8c5;
+  border-color: #454a40;
+  color: #b4bba8;
   font-size: 11px;
 }
 .atlas-header .atlas-account {
   font-size: 11px;
 }
 .atlas-header .atlas-account .btn-ghost {
-  color: #a9bfd5;
+  color: #b4bba8;
 }
 .atlas-header .atlas-account [role="radiogroup"] {
-  background: #1c3551;
+  background: #20231f;
 }
 .atlas-header .atlas-account [role="radio"][aria-checked="true"] {
-  background: #35658a;
-  color: #e7f1fb;
+  background: #454a40;
+  color: #f4f5ef;
 }
 .atlas-header .atlas-account [role="radio"] {
-  color: #8daac6;
+  color: #b4bba8;
 }
 .atlas-navigation {
-  background: #12304f;
+  background: #20231f;
   border: 0;
   min-height: 52px;
 }
 .atlas-navigation select {
-  background: #0a233e;
-  border: 1px solid #355472;
-  color: #daeaff;
+  background: #20231f;
+  border: 1px solid #454a40;
+  color: #f4f5ef;
   font-size: 11px;
 }
 .atlas-navigation .atlas-nav-link {
   height: 52px;
   font-size: 11px;
-  color: #b4c7dc;
+  color: #d9ddcf;
   padding: 12px 16px;
 }
 .atlas-navigation .atlas-nav-link[aria-current="page"] {
-  color: #accdf1;
-  background: #1a3d5c;
-  border-color: #6ba7e7;
+  color: #d9ddcf;
+  background: #20231f;
+  border-color: #b4bba8;
 }
 .atlas-header .atlas-nav-link:hover {
-  background: #1e4569;
+  background: #454a40;
 }
 .atlas-mobile {
   background: var(--atlas-paper);
@@ -1056,11 +1056,11 @@ body {
   color: var(--color-zinc-700);
 }
 .dark .atlas-mobile .atlas-nav-link {
-  color: #c2d8ee;
+  color: #d9ddcf;
 }
 .atlas-mobile .atlas-navigation .atlas-nav-link[aria-current="page"] {
-  color: var(--atlas-blue);
-  background: #d9e9f8;
+  color: var(--atlas-accent);
+  background: #f4f5ef;
 }
 .atlas-mobile .atlas-navigation select {
   background: var(--atlas-paper);
@@ -1076,10 +1076,10 @@ body {
 }
 .journey-observatory {
   min-width: 0;
-  background: #0b213a;
-  color: #d3e7fc;
+  background: #20231f;
+  color: #f4f5ef;
   box-shadow: none;
-  border: 1px solid #1f496a;
+  border: 1px solid #454a40;
 }
 .observatory-heading {
   padding: 28px 32px 24px;
@@ -1087,36 +1087,36 @@ body {
   justify-content: space-between;
   align-items: center;
   gap: 20px;
-  background: #102b47;
-  border-bottom: 1px solid #2a445d;
+  background: #20231f;
+  border-bottom: 1px solid #454a40;
 }
 .observatory-heading .eyebrow {
   font: 11px var(--font-mono);
   letter-spacing: 0.18em;
-  color: #6fa9e8;
+  color: #b4bba8;
 }
 .observatory-heading h2 {
   font-size: 28px;
   font-weight: 600;
   letter-spacing: -0.04em;
   margin: 12px 0 8px;
-  color: #edf7ff;
+  color: #f4f5ef;
 }
 .observatory-heading p {
   font-size: 11px;
-  color: #87a7c4;
+  color: #b4bba8;
 }
 .observatory-coordinate {
   display: flex;
   gap: 16px;
   align-items: center;
-  color: #669fdc;
+  color: #b4bba8;
 }
 .observatory-coordinate > svg {
   width: 24px;
   height: 24px;
   padding: 0;
-  border: 1px solid #36516d;
+  border: 1px solid #454a40;
   border-radius: 50%;
 }
 .observatory-coordinate > span {
@@ -1128,18 +1128,18 @@ body {
   grid-template-columns: 230px minmax(0, 1fr);
 }
 .visitor-selector {
-  border-right: 1px solid #29435d;
+  border-right: 1px solid #454a40;
   padding: 0 0 20px;
-  background: #0a1c31;
+  background: #101211;
 }
 .visitor-selector-title {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #8da9c4;
+  color: #b4bba8;
   font-size: 11px;
   padding: 20px 20px 16px;
-  border-bottom: 1px solid #223b54;
+  border-bottom: 1px solid #20231f;
 }
 .visitor-selector > button {
   display: flex;
@@ -1148,18 +1148,18 @@ body {
   padding: 16px 16px;
   width: 100%;
   text-align: left;
-  color: #a9c2dc;
-  border-bottom: 1px solid #21374e;
+  color: #d9ddcf;
+  border-bottom: 1px solid #20231f;
   border-left: 3px solid transparent;
   transition: background 0.15s;
 }
 .visitor-selector > button[aria-pressed="true"] {
-  background: #193c58;
-  color: #e9f2fb;
-  border-left-color: #77aee9;
+  background: #20231f;
+  color: #f4f5ef;
+  border-left-color: #b4bba8;
 }
 .visitor-selector > button:hover {
-  background: #183750;
+  background: #20231f;
 }
 .visitor-selector > button > span:nth-child(2) {
   min-width: 0;
@@ -1177,11 +1177,11 @@ body {
   display: block;
   font-size: 11px;
   margin-top: 4px;
-  color: #7da0bd;
+  color: #b4bba8;
 }
 .visitor-index {
   font: 11px var(--font-mono);
-  color: #6188a6;
+  color: #626b58;
 }
 .visitor-selector > a {
   display: flex;
@@ -1189,7 +1189,7 @@ body {
   gap: 8px;
   font-size: 11px;
   padding: 20px 20px 0;
-  color: #76abe4;
+  color: #b4bba8;
 }
 .visitor-selector > p {
   padding: 20px;
@@ -1204,13 +1204,13 @@ body {
   align-items: center;
   gap: 16px;
   padding: 16px 24px;
-  background: #102b47;
-  border-bottom: 1px solid #2d455e;
+  background: #20231f;
+  border-bottom: 1px solid #454a40;
   font-size: 11px;
-  color: #a1bdd8;
+  color: #b4bba8;
 }
 .selected-visitor b {
-  color: #d8edff;
+  color: #f4f5ef;
   font-weight: 600;
   margin-left: 12px;
 }
@@ -1218,7 +1218,7 @@ body {
   display: flex;
   align-items: center;
   gap: 4px;
-  color: #91bded;
+  color: #b4bba8;
   font-size: 11px;
 }
 .journey-controls {
@@ -1236,14 +1236,14 @@ body {
 }
 .journey-controls label > span {
   font: 11px var(--font-mono);
-  color: #96b4d0;
+  color: #b4bba8;
   letter-spacing: 0.1em;
 }
 .journey-controls select {
-  color: #c3ddf4;
-  background: #122d47;
+  color: #d9ddcf;
+  background: #20231f;
   font: 11px var(--font-sans);
-  border: 1px solid #39566f;
+  border: 1px solid #454a40;
   padding: 8px 28px 8px 12px;
   border-radius: 0px;
   max-width: 100%;
@@ -1255,27 +1255,27 @@ body {
 }
 .journey-session-count > strong {
   font: 42px/1 var(--font-mono);
-  color: #71abe8;
+  color: #b4bba8;
   letter-spacing: -0.08em;
 }
 .journey-session-count > span {
   font-size: 11px;
   line-height: 1.8;
-  color: #7fa2bf;
+  color: #b4bba8;
   white-space: nowrap;
 }
 .journey-session-count b {
   font-weight: 400;
-  color: #c0d8f2;
+  color: #d9ddcf;
 }
 .journey-instrument {
   display: flex;
   position: relative;
   padding: 0 24px 0 0;
-  background-image: radial-gradient(#2a476355 0.7px, transparent 0.7px);
+  background-image: radial-gradient(#454a4055 0.7px, transparent 0.7px);
   background-size: 12px 12px;
-  border-top: 1px solid #243e58;
-  border-bottom: 1px solid #243e58;
+  border-top: 1px solid #20231f;
+  border-bottom: 1px solid #20231f;
 }
 .journey-lanes {
   display: flex;
@@ -1283,25 +1283,25 @@ body {
   padding: 32px 16px 0 20px;
   width: 90px;
   flex-shrink: 0;
-  background: #0c233b;
-  border-right: 1px solid #2b455e;
+  background: #20231f;
+  border-right: 1px solid #454a40;
 }
 .journey-lanes > span {
   height: 94px;
   font: 11px var(--font-mono);
-  color: #85a9c9;
+  color: #b4bba8;
   letter-spacing: 0.08em;
 }
 .journey-lanes small {
   display: block;
   font: 11px var(--font-sans);
-  color: #537b9d;
+  color: #626b58;
   margin-top: 4px;
 }
 .journey-scroll {
   min-width: 0;
   overflow-x: auto;
-  scrollbar-color: #355980 #10263b;
+  scrollbar-color: #454a40 #20231f;
   scrollbar-width: thin;
 }
 .journey-canvas {
@@ -1325,14 +1325,14 @@ body {
   margin: auto;
   height: 24px;
   width: 24px;
-  color: #a9caee;
+  color: #d9ddcf;
   font: 11px var(--font-mono);
   border-radius: 50%;
   transition: background 0.15s;
 }
 .journey-point[aria-pressed="true"] .point-cross {
-  background: #91bded;
-  color: #113154;
+  background: #b4bba8;
+  color: #20231f;
   box-shadow: none;
 }
 .point-label {
@@ -1343,7 +1343,7 @@ body {
   margin-top: 8px;
 }
 .point-label time {
-  color: #9dbbdc;
+  color: #b4bba8;
   font: 11px var(--font-mono);
 }
 .point-label b {
@@ -1352,10 +1352,10 @@ body {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  color: #abc7dd;
+  color: #d9ddcf;
 }
 .point-label small {
-  color: #91afd0;
+  color: #b4bba8;
   font: 11px var(--font-mono);
   max-width: 100px;
   overflow: hidden;
@@ -1363,10 +1363,10 @@ body {
   text-overflow: ellipsis;
 }
 .journey-point[aria-pressed="true"] .point-label b {
-  color: #e2eefa;
+  color: #f4f5ef;
 }
 .journey-point:focus-visible {
-  outline: 2px solid #bfd9f5;
+  outline: 2px solid #d9ddcf;
   outline-offset: 5px;
 }
 .journey-focus {
@@ -1382,7 +1382,7 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  color: #6c9bcd;
+  color: #b4bba8;
 }
 .focus-cross span {
   font: 11px var(--font-mono);
@@ -1394,17 +1394,17 @@ body {
   gap: 8px;
 }
 .focus-description > span {
-  color: #759ec9;
+  color: #b4bba8;
   font-size: 11px;
 }
 .focus-description > strong {
   font-weight: 600;
-  color: #ddf0ff;
+  color: #f4f5ef;
   font-size: 13px;
   overflow-wrap: anywhere;
 }
 .focus-description > code {
-  color: #6aa5e5;
+  color: #b4bba8;
   font: 11px var(--font-mono);
   overflow-wrap: anywhere;
 }
@@ -1413,16 +1413,16 @@ body {
   flex-direction: column;
   gap: 8px;
   font-size: 11px;
-  border-left: 1px solid #294a65;
+  border-left: 1px solid #454a40;
   padding-left: 20px;
   min-width: 0;
 }
 .journey-focus dt {
-  color: #97b6d7;
+  color: #b4bba8;
   margin-bottom: 4px;
 }
 .journey-focus dd {
-  color: #a2c0d8;
+  color: #b4bba8;
   overflow-wrap: anywhere;
 }
 .journey-footnote {
@@ -1432,8 +1432,8 @@ body {
   gap: 8px;
   flex-wrap: wrap;
   padding: 12px 24px;
-  border-top: 1px solid #29435b;
-  color: #95b2cc;
+  border-top: 1px solid #454a40;
+  color: #b4bba8;
   font-size: 11px;
 }
 .journey-footnote span:first-child {
@@ -1445,11 +1445,11 @@ body {
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: #67a4e6;
+  background: #b4bba8;
 }
 .journey-empty {
   padding: 52px 24px;
-  color: #89b0ce;
+  color: #b4bba8;
   font-size: 12px;
 }
 .observatory-section-title {
@@ -1463,7 +1463,7 @@ body {
 .observatory-section-title > span {
   font: 11px var(--font-mono);
   letter-spacing: 0.1em;
-  color: var(--atlas-blue);
+  color: var(--atlas-accent);
 }
 .observatory-section-title h2 {
   font-size: 20px;
@@ -1492,7 +1492,7 @@ body {
   font-family: var(--font-mono);
   font-size: 37px;
   font-weight: 400;
-  color: var(--atlas-blue);
+  color: var(--atlas-accent);
 }
 .engagement-atlas {
   border-radius: 4px;
@@ -1538,8 +1538,8 @@ body {
   overflow: hidden;
 }
 .person-event-ledger .journey-map {
-  background: #0b213a;
-  color: #d3e7fc;
+  background: #20231f;
+  color: #f4f5ef;
 }
 .person-event-ledger .journey-canvas {
   min-width: 100%;
@@ -1552,12 +1552,12 @@ body {
   overflow-y: auto;
 }
 .installation-signal {
-  background: #0c2844;
+  background: #20231f;
   padding: 32px 36px;
-  color: #dceaf9;
+  color: #f4f5ef;
 }
 .installation-signal > .eyebrow {
-  color: #69a6e7;
+  color: #b4bba8;
   font: 11px var(--font-mono);
   letter-spacing: 0.14em;
 }
@@ -1570,7 +1570,7 @@ body {
 .installation-flow {
   display: flex;
   gap: 0;
-  border-top: 1px solid #415d7b;
+  border-top: 1px solid #454a40;
   padding-top: 24px;
 }
 .installation-flow > span {
@@ -1586,21 +1586,21 @@ body {
   left: 13px;
   width: 8px;
   height: 8px;
-  border: 2px solid #65a2e4;
-  background: #0c2844;
+  border: 2px solid #b4bba8;
+  background: #20231f;
   border-radius: 50%;
 }
 .installation-flow b {
   position: absolute;
   left: 0;
-  color: #62a1e5;
+  color: #b4bba8;
   font: 17px var(--font-mono);
 }
 .installation-flow small {
   display: block;
   margin-top: 8px;
   font-size: 11px;
-  color: #7fa1bd;
+  color: #b4bba8;
 }
 .instrument-guide > ol {
   display: grid;
@@ -1621,39 +1621,39 @@ body {
   border-radius: 0;
   height: 35px;
   width: 35px;
-  background: #1255c4;
-  color: #d0e3f7;
+  background: #626b58;
+  color: #d9ddcf;
   font: 16px var(--font-mono);
 }
 .atlas-login-story {
-  background: #0a213b;
+  background: #20231f;
   padding: 60px 48px;
-  background-image: radial-gradient(#45658833 0.7px, transparent 0.7px);
+  background-image: radial-gradient(#626b5833 0.7px, transparent 0.7px);
   background-size: 16px 16px;
 }
 .atlas-login-story .eyebrow {
-  color: #71abe8;
+  color: #b4bba8;
   font: 11px var(--font-mono);
   letter-spacing: 0.14em;
 }
 .atlas-login-story h2 {
   font-size: 48px;
   font-weight: 400;
-  color: #e9f2fb;
+  color: #f4f5ef;
 }
 .atlas-login-story p {
-  color: #80a4c4;
+  color: #b4bba8;
 }
 .login-flightplan {
   margin-top: 60px;
-  border: 1px solid #335575;
+  border: 1px solid #454a40;
   padding: 20px 24px;
-  background: #112e4a99;
+  background: #20231f99;
 }
 .flightplan-top {
   font: 11px var(--font-mono);
   letter-spacing: 0.15em;
-  color: #719cc9;
+  color: #b4bba8;
   display: flex;
   justify-content: space-between;
 }
@@ -1670,25 +1670,25 @@ body {
   position: absolute;
   width: 100%;
   height: 1px;
-  background: #5f97d3;
+  background: #b4bba8;
 }
 .flightplan-route i {
   display: block;
   width: 14px;
   height: 14px;
-  border: 1px solid #7ab0e9;
-  outline: 5px solid #32527444;
+  border: 1px solid #b4bba8;
+  outline: 5px solid #454a4044;
   border-radius: 50%;
-  background: #0a213b;
+  background: #20231f;
   z-index: 1;
 }
 .flightplan-route i:nth-child(2) {
-  background: #77aee8;
+  background: #b4bba8;
 }
 .flightplan-labels {
   display: flex;
   justify-content: space-between;
-  color: #77a5d6;
+  color: #b4bba8;
   font: 11px var(--font-mono);
   letter-spacing: 0.07em;
 }
@@ -1697,30 +1697,30 @@ body {
   font: 11px var(--font-sans);
   letter-spacing: 0;
   margin-top: 8px;
-  color: #b4d1e8;
+  color: #d9ddcf;
 }
 .flightplan-caption {
-  border-top: 1px solid #335575;
+  border-top: 1px solid #454a40;
   padding-top: 20px;
   margin-top: 24px;
   font: 11px var(--font-mono);
   letter-spacing: 0.13em;
-  color: #77a5d6;
+  color: #b4bba8;
 }
 .flightplan-caption b {
   display: block;
   margin-top: 8px;
-  color: #dceeff;
+  color: #f4f5ef;
   font:
     italic 25px Georgia,
     serif;
   letter-spacing: -0.02em;
 }
 .atlas-login-form {
-  background: #edf3f9;
+  background: #f4f5ef;
 }
 .dark .atlas-login-form {
-  background: #0d1c30;
+  background: #101211;
 }
 .atlas-login-form h1 {
   font-size: 25px;
@@ -1729,7 +1729,7 @@ body {
 }
 .atlas-login-form .btn-primary {
   padding: 12px;
-  background: #155bd7;
+  background: #626b58;
   color: #fff;
 }
 @media (max-width: 1100px) {
@@ -1785,7 +1785,7 @@ body {
     display: flex;
     overflow-x: auto;
     padding: 0;
-    border-bottom: 1px solid #29435d;
+    border-bottom: 1px solid #454a40;
     border-right: 0;
     scrollbar-width: thin;
   }
@@ -1801,7 +1801,7 @@ body {
     padding: 16px;
   }
   .visitor-selector > button[aria-pressed="true"] {
-    border-color: #77aee9;
+    border-color: #b4bba8;
   }
   .visitor-selector > button > svg {
     display: none;
@@ -1915,7 +1915,7 @@ body {
   .installation-flow {
     flex-direction: column;
     border-top: 0;
-    border-left: 1px solid #415d7b;
+    border-left: 1px solid #454a40;
     padding-top: 0;
     margin-left: 4px;
     gap: 24px;
@@ -1950,7 +1950,7 @@ body {
   }
 }
 .atlas-header > .atlas-masthead > .btn-ghost {
-  color: #c0d9ee;
+  color: #d9ddcf;
 }
 .journey-point .point-label b {
   font-size: 11px;

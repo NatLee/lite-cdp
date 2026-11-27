@@ -57,9 +57,9 @@ impl Activity {
 
 #[derive(Deserialize, Default)]
 pub struct ListQuery {
-    /// `member`：知道 email 的；`anonymous`：還不知道是誰的
+    /// `member`：有 user_id 或 email；`anonymous`：兩者都沒有
     kind: Option<String>,
-    /// email、名稱或帳號含有這段文字
+    /// user_id、email、名稱或帳號含有這段文字
     q: Option<String>,
     activity: Option<Activity>,
     label_id: Option<i64>,
@@ -135,10 +135,10 @@ impl Filter {
             .push_bind(self.site_id);
         match self.kind.as_str() {
             "member" => {
-                qb.push(" AND p.email != ''");
+                qb.push(" AND (p.email != '' OR p.user_id != '')");
             }
             "anonymous" => {
-                qb.push(" AND p.email = ''");
+                qb.push(" AND (p.email = '' AND p.user_id = '')");
             }
             _ => {}
         }
@@ -147,6 +147,8 @@ impl Filter {
         }
         if let Some(q) = &self.q {
             qb.push(" AND (instr(lower(p.email), ")
+                .push_bind(q.clone())
+                .push(") > 0 OR instr(lower(p.user_id), ")
                 .push_bind(q.clone())
                 .push(") > 0 OR instr(lower(p.name), ")
                 .push_bind(q.clone())
@@ -182,7 +184,7 @@ impl Filter {
         offset: i64,
     ) -> AppResult<Vec<Person>> {
         let mut qb = QueryBuilder::new(
-            "SELECT p.id, p.email, p.name, p.account, p.pageviews, p.first_seen, p.last_seen,
+            "SELECT p.id, p.email, p.user_id, p.identity_verified, p.name, p.account, p.pageviews, p.first_seen, p.last_seen,
                     p.identified_at",
         );
         self.push(&mut qb);
@@ -201,6 +203,8 @@ impl Filter {
                 labels: labels.remove(&row.id).unwrap_or_default(),
                 id: row.id,
                 email: row.email,
+                user_id: row.user_id,
+                identity_verified: row.identity_verified,
                 name: row.name,
                 account: row.account,
                 pageviews: row.pageviews,
@@ -218,6 +222,8 @@ pub const DEFAULT_ORDER: &str = "p.last_seen DESC, p.id DESC";
 struct PersonRow {
     id: i64,
     email: String,
+    user_id: String,
+    identity_verified: bool,
     name: String,
     account: String,
     pageviews: i64,
@@ -231,6 +237,8 @@ pub struct Person {
     id: i64,
     /// 空字串是還不知道是誰的匿名訪客
     email: String,
+    user_id: String,
+    identity_verified: bool,
     name: String,
     account: String,
     pageviews: i64,
@@ -366,6 +374,8 @@ pub async fn export(
 struct ProfileRow {
     id: i64,
     email: String,
+    user_id: String,
+    identity_verified: bool,
     name: String,
     account: String,
     traits: String,
@@ -428,7 +438,7 @@ pub async fn detail(
 ) -> AppResult<Json<Value>> {
     ensure_visible(&state, &user, site_id).await?;
     let row: Option<ProfileRow> = sqlx::query_as(
-        "SELECT id, email, name, account, traits, pageviews, first_seen, last_seen, identified_at
+        "SELECT id, email, user_id, identity_verified, name, account, traits, pageviews, first_seen, last_seen, identified_at
          FROM people WHERE site_id = ? AND id = ?",
     )
     .bind(site_id)
@@ -492,6 +502,8 @@ pub async fn detail(
     Ok(Json(json!({
         "id": row.id,
         "email": row.email,
+        "user_id": row.user_id,
+        "identity_verified": row.identity_verified,
         "name": row.name,
         "account": row.account,
         "traits": serde_json::from_str::<Value>(&row.traits).unwrap_or_else(|_| json!({})),
@@ -520,6 +532,9 @@ pub struct EventsQuery {
 #[derive(sqlx::FromRow)]
 struct EventRow {
     id: i64,
+    event_id: String,
+    happened_at: Option<String>,
+    received_at: String,
     #[sqlx(rename = "type")]
     kind: String,
     name: String,
@@ -544,7 +559,7 @@ pub async fn events(
     let limit = query.limit.unwrap_or(50).clamp(1, 200);
 
     let mut qb = QueryBuilder::new(
-        "SELECT id, type, name, url, path, title, referrer_host, props, session_id, created_at
+        "SELECT id, event_id, happened_at, received_at, type, name, url, path, title, referrer_host, props, session_id, created_at
          FROM events WHERE person_id = ",
     );
     qb.push_bind(id);
@@ -573,6 +588,9 @@ pub async fn events(
         .map(|row| {
             json!({
                 "id": row.id,
+                "event_id": row.event_id,
+                "happened_at": row.happened_at,
+                "received_at": row.received_at,
                 "type": row.kind,
                 "name": row.name,
                 "url": row.url,

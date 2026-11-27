@@ -105,6 +105,8 @@ export const api = {
   createSite: (input: SiteInput) => post<Site>("/sites", input),
   updateSite: (id: number, input: SiteInput) => patch<Site>(`/sites/${id}`, input),
   deleteSite: (id: number) => del(`/sites/${id}`),
+  createInstallationTest: (id: number) => post<{token:string;expires_at:string}>(`/sites/${id}/installation-tests`),
+  installationReceipt: (id:number, token:string) => get<{expired:boolean;received_at:string|null;receipt:null|{events:Record<string,unknown>[];origin:string;analytics_written:boolean;identity:unknown;bot:boolean}}>(`/sites/${id}/installation-tests/${encodeURIComponent(token)}`),
   rotateKey: (id: number) => post<Site>(`/sites/${id}/rotate-key`),
 
   overview: (site: number) => get<Overview>(`/sites/${site}/overview${query({ tz_offset: tzOffset() })}`),

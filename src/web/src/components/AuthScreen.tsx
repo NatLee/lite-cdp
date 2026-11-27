@@ -53,7 +53,7 @@ export function AuthScreen({ setupRequired, children }: { setupRequired: boolean
   return (
     <div className="atlas-login">
       <section className="atlas-login-story">
-        <span className="eyebrow">LITE CDP / JOURNEY OBSERVATORY</span>
+        <span className="eyebrow">LITE CDP / SIGNAL CONSOLE</span>
         <h2>
           從一次造訪，
           <br />
@@ -66,7 +66,7 @@ export function AuthScreen({ setupRequired, children }: { setupRequired: boolean
         </p>
         <div className="login-flightplan" aria-hidden="true">
           <div className="flightplan-top">
-            OBSERVATION PROTOCOL <span>01—03</span>
+            IDENTITY PROTOCOL <span>01—03</span>
           </div>
           <div className="flightplan-route">
             <i />

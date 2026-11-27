@@ -190,8 +190,8 @@ export function TrafficExplorer({ daily }: { daily: Overview["daily"] }) {
             >
               <defs>
                 <linearGradient id="traffic-fill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0" stopColor="#3699e5" stopOpacity=".28" />
-                  <stop offset="1" stopColor="#3699e5" stopOpacity=".02" />
+                  <stop offset="0" stopColor="var(--atlas-accent)" stopOpacity=".28" />
+                  <stop offset="1" stopColor="var(--atlas-accent)" stopOpacity=".02" />
                 </linearGradient>
               </defs>
               {[0, 0.5, 1].map((r) => (
@@ -214,7 +214,7 @@ export function TrafficExplorer({ daily }: { daily: Overview["daily"] }) {
               <path
                 d={path}
                 fill="none"
-                stroke="var(--atlas-blue)"
+                stroke="var(--atlas-accent)"
                 strokeWidth="2.5"
                 vectorEffect="non-scaling-stroke"
               />
@@ -223,14 +223,14 @@ export function TrafficExplorer({ daily }: { daily: Overview["daily"] }) {
                 x2={x(index)}
                 y1="16"
                 y2="184"
-                stroke="var(--atlas-blue)"
+                stroke="var(--atlas-accent)"
                 strokeDasharray="4 4"
               />
               <circle
                 cx={x(index)}
                 cy={y(day[metric])}
                 r="5"
-                fill="var(--atlas-blue)"
+                fill="var(--atlas-accent)"
                 stroke="var(--atlas-paper)"
                 strokeWidth="2"
               />

@@ -331,6 +331,8 @@ fn event(site: &Blueprint, kind: &'static str, name: &str, page: &Page, referrer
     let url = format!("{}{}", site.url, page.path);
     let host = site.url.trim_start_matches("https://");
     Event {
+        event_id: String::new(),
+        happened_at: None,
         kind,
         name: name.to_owned(),
         path: page.path.to_owned(),
@@ -513,6 +515,8 @@ async fn seed_site(
                 traits.insert((*key).to_owned(), Value::from(*rng.pick(values)));
             }
             Some(Identify {
+                user_id: String::new(),
+                verified: false,
                 email,
                 name: Some(format!("{surname}{given}")),
                 account: Some(format!("M-{:04}", 1000 + index)),

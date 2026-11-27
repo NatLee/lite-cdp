@@ -11,6 +11,7 @@ pub mod error;
 pub mod ingest;
 pub mod labels;
 pub mod logging;
+pub mod policy;
 pub mod ratelimit;
 pub mod retention;
 pub mod routes;

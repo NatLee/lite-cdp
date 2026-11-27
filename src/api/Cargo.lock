@@ -1728,6 +1728,7 @@ dependencies = [
  "axum",
  "chrono",
  "csv",
+ "hmac 0.12.1",
  "http-body-util",
  "rand_core 0.6.4",
  "rmcp",
@@ -1742,6 +1743,7 @@ dependencies = [
  "tower-http",
  "tracing",
  "tracing-subscriber",
+ "url",
 ]
 
 [[package]]

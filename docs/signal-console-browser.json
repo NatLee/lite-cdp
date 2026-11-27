@@ -1,0 +1,23 @@
+{
+  "browser": "Google Chrome via Playwright",
+  "disposable_database": true,
+  "backend": "real Rust/SQLite",
+  "checks": [
+    "consent-no-storage-no-collection",
+    "URL sanitization",
+    "two-device user_id merge",
+    "shared-email different users separated",
+    "duplicate load idempotent",
+    "conflicting key diagnostic",
+    "cross-tab logout",
+    "cross-tab revoke",
+    "response-loss retry deduplicated",
+    "test receipt isolated",
+    "UI policy persistence",
+    "Next template",
+    "simulator identity merge",
+    "desktop light/dark and mobile styles/no overflow"
+  ],
+  "page_errors": [],
+  "retry_attempts": 2
+}

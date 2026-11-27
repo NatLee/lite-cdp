@@ -17,6 +17,7 @@ export default defineConfig({
       "/mcp": { target: apiTarget, changeOrigin: false },
       "/api": { target: apiTarget, changeOrigin: false },
       "/collect": { target: apiTarget, changeOrigin: false },
+      "/tracker-config": { target: apiTarget, changeOrigin: false },
       "/t.js": { target: apiTarget, changeOrigin: false },
     },
   },

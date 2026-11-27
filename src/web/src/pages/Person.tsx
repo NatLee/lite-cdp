@@ -59,6 +59,8 @@ function Profile({ person }: { person: PersonDetail }) {
     <section className="card">
       <CardHeader title="基本資料" />
       <dl className="divide-y divide-zinc-100 px-4 py-2 sm:px-5 dark:divide-zinc-800">
+        {person.user_id && <Fact label="會員 ID">{person.user_id}</Fact>}
+        {(person.user_id || person.email) && <Fact label="識別來源">{person.identity_verified ? "伺服器簽署會員 ID" : "網站宣告（未驗證登入）"}</Fact>}
         {person.email && <Fact label="Email">{person.email}</Fact>}
         {person.name && <Fact label="名稱">{person.name}</Fact>}
         {person.account && <Fact label="會員帳號">{person.account}</Fact>}
@@ -313,7 +315,7 @@ export function PersonPage() {
               <div className="min-w-0">
                 <h1 className="flex flex-wrap items-center gap-2 text-xl font-semibold tracking-tight">
                   <span className="truncate">{personName(person)}</span>
-                  {person.email ? (
+                  {(person.email || person.user_id) ? (
                     <Badge tone="green">會員</Badge>
                   ) : (
                     <Badge>匿名訪客</Badge>
