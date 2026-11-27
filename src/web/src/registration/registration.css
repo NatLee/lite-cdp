@@ -1,0 +1,25 @@
+.registration-form { padding: 32px; }
+.registration-form h1 { margin: 8px 0 20px; font-size: clamp(24px, 3vw, 32px); font-weight: 600; line-height: 1.35; }
+.registration-rubric { font-size: 12px; letter-spacing: .12em; opacity: .64; }
+.registration-description { margin-bottom: 24px; line-height: 1.8; opacity: .72; }
+.registration-notice { margin: 16px 0; padding: 16px; border: 1px solid currentColor; border-color: color-mix(in srgb, currentColor 20%, transparent); border-radius: 4px; line-height: 1.8; }
+.registration-notice h2 { font-size: 20px; font-weight: 600; }
+.registration-providers { display: grid; gap: 12px; margin-top: 24px; padding-top: 20px; border-top: 1px solid color-mix(in srgb, currentColor 16%, transparent); }
+.registration-return, .registration-login-link { margin-top: 20px; font-size: 12px; line-height: 1.8; }
+.registration-return a, .registration-login-link a { text-decoration: underline; text-underline-offset: 4px; }
+.registration-login-link span { opacity: .64; }
+.registration-admin { margin: 24px 0; padding: 24px; }
+.registration-admin h2 { font-size: 20px; font-weight: 600; }
+.registration-admin h3 { font-size: 16px; font-weight: 600; }
+.registration-admin header p, .registration-admin .hint { line-height: 1.8; }
+.registration-admin section { margin-top: 24px; padding-top: 24px; border-top: 1px solid color-mix(in srgb, currentColor 16%, transparent); }
+.registration-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin-top: 16px; }
+.registration-controls label { display: grid; gap: 8px; min-width: 160px; }
+.registration-ledger { padding: 0; margin: 16px 0; list-style: none; }
+.registration-ledger > li { padding: 16px 0; border-bottom: 1px solid color-mix(in srgb, currentColor 12%, transparent); overflow-wrap: anywhere; }
+.registration-record-header { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+.registration-meta { opacity: .64; font-size: 12px; line-height: 1.8; }
+.registration-reason { margin-top: 12px; max-width: 560px; }
+.registration-reason label { display: block; margin-bottom: 8px; font-size: 12px; }
+.registration-reason textarea { width: 100%; min-height: 80px; }
+@media (max-width: 640px) { .registration-form { padding: 24px; } .registration-admin { padding: 16px; } .registration-controls { align-items: stretch; } .registration-controls > * { flex: 1 1 auto; } }

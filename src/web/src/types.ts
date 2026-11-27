@@ -24,6 +24,7 @@ export interface AuthState {
 }
 
 export interface Account extends User {
+  account_status?: "active" | "pending" | "rejected";
   disabled: boolean;
   created_at: string;
   /** 看得到幾個網站 */
