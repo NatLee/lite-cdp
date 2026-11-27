@@ -44,6 +44,7 @@ export interface Site {
   /** 追蹤程式碼裡的 data-key */
   key: string;
   allowed_origins: string[];
+  collection_policy?: import("./installation/policy").CollectionPolicy;
   active: boolean;
   created_at: string;
   /** 一共認得幾個人（含匿名） */
@@ -58,6 +59,7 @@ export interface SiteInput {
   name?: string;
   url?: string;
   allowed_origins?: string[];
+  collection_policy?: import("./installation/policy").CollectionPolicy;
   active?: boolean;
   member_ids?: number[];
 }
@@ -96,6 +98,8 @@ export type PersonKind = "all" | "member" | "anonymous";
 
 export interface Person {
   id: number;
+  user_id?: string;
+  identity_verified?: boolean;
   /** 匿名訪客是空字串 */
   email: string;
   name: string;
@@ -143,6 +147,9 @@ export type EventType = "pageview" | "click" | "scroll" | "custom" | "identify";
 
 export interface TimelineEvent {
   id: number;
+  event_id?: string;
+  happened_at?: string | null;
+  received_at?: string;
   type: EventType;
   name: string;
   url: string;
@@ -223,5 +230,5 @@ export interface Overview {
   top_pages: { path: string; title: string; pageviews: number; visitors: number }[];
   top_referrers: { host: string; visitors: number }[];
   labels: (LabelChip & { people: number })[];
-  recent_identified: { id: number; email: string; name: string; identified_at: string }[];
+  recent_identified: { id: number; user_id?: string; email: string; name: string; identified_at: string }[];
 }

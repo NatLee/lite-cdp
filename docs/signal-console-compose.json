@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "checks": [
+    "built nginx static and API",
+    "public config CORS/no-store/no-secret",
+    "real tracker route",
+    "required consent enforcement",
+    "event replay deduplication",
+    "URL sanitization",
+    "isolated installation receipt",
+    "legacy identity replay guard",
+    "ordered stale identity guard",
+    "acknowledged identity cursor",
+    "nonroot backend with no published port"
+  ],
+  "disposable_project": true
+}

@@ -28,7 +28,7 @@ docker build -t lite-cdp:standalone .
 
 Compose builds the two smaller deployment targets explicitly. The backend remains reachable to other services on the Compose network, rather than through a published host port. Application authorization and registration policy remain enforced by the backend.
 
-`/collect` and `/t.js` also proxy to the API. Compose defaults `CDP_TRUST_PROXY=true` because nginx overwrites X-Forwarded-For; collection rate limiting can then use the visitor address safely. Existing tracking-site CORS behavior stays in the application.
+`/collect`, `/tracker-config/{key}` and `/t.js` also proxy to the API. The configuration route must return JSON, never the SPA fallback. Compose defaults `CDP_TRUST_PROXY=true` because nginx overwrites X-Forwarded-For; collection rate limiting can then use the visitor address safely. Existing tracking-site CORS behavior stays in the application.
 
 Proxy semantics follow the [nginx proxy module](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_pass) and the path-only access format uses the [nginx log module](https://nginx.org/en/docs/http/ngx_http_log_module.html#log_format).
 

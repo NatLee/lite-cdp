@@ -253,6 +253,153 @@ fn names(list: &Value) -> Vec<&str> {
 }
 
 #[tokio::test]
+async fn collection_policy_is_persisted_public_and_enforced() {
+    let t = TestApp::new().await;
+    let admin = t.admin().await;
+    let (id, key) = t.site(&admin, json!({ "name": "policy", "collection_policy": {
+        "consent_required": true, "auto_click": false, "query_mode": "allowlist",
+        "query_allowlist": ["campaign"], "referrer_scope": "origin", "allowed_traits": ["plan"]
+    }})).await;
+    let site = t.get(&admin, &format!("/api/sites/{id}")).await;
+    assert_eq!(site["collection_policy"]["consent_required"], true);
+    let (status, config) = t
+        .call(None, Method::GET, &format!("/tracker-config/{key}"), None)
+        .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(config["policy"]["auto_click"], false);
+    assert!(config.get("identity_secret").is_none());
+    let mut payload = batch(
+        &key,
+        "policy-anon-001",
+        vec![view("/?email=private&campaign=spring#secret")],
+    );
+    assert_eq!(
+        t.collect_as(&payload, CHROME, None).await.0,
+        StatusCode::FORBIDDEN
+    );
+    payload["consent"] = json!(true);
+    payload["identify"] =
+        json!({ "user_id": "customer-1", "traits": { "plan": "pro", "secret": "omit" } });
+    t.collect(payload).await;
+    let (url,): (String,) = sqlx::query_as("SELECT url FROM events WHERE type='pageview'")
+        .fetch_one(&t.state.db)
+        .await
+        .unwrap();
+    assert_eq!(url, "https://www.example.com/?campaign=spring");
+    let traits: String = sqlx::query_scalar("SELECT traits FROM people")
+        .fetch_one(&t.state.db)
+        .await
+        .unwrap();
+    assert_eq!(
+        serde_json::from_str::<Value>(&traits).unwrap(),
+        json!({"plan":"pro"})
+    );
+}
+
+#[tokio::test]
+async fn stable_user_ids_merge_devices_but_never_distinct_subjects_by_email() {
+    let t = TestApp::new().await;
+    let admin = t.admin().await;
+    let (id, key) = t.site(&admin, json!({ "name": "subjects" })).await;
+    for (anon, user) in [
+        ("browser-one", "member-1"),
+        ("browser-two", "member-2"),
+        ("browser-three", "member-1"),
+    ] {
+        let mut payload = batch(&key, anon, vec![view("/")]);
+        payload["identify"] = json!({"user_id":user,"email":"shared@example.com"});
+        t.collect(payload).await;
+    }
+    let people = t
+        .get(&admin, &format!("/api/sites/{id}/people?kind=member"))
+        .await;
+    assert_eq!(people["total"], 2);
+    assert_eq!(t.count("devices").await, 3);
+    let one = people["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| p["user_id"] == "member-1")
+        .unwrap();
+    assert_eq!(one["pageviews"], 2);
+    let found = t
+        .get(&admin, &format!("/api/sites/{id}/people?q=member-1"))
+        .await;
+    assert_eq!(found["total"], 1);
+}
+
+#[tokio::test]
+async fn replayed_event_ids_do_not_inflate_events_labels_or_pageviews() {
+    let t = TestApp::new().await;
+    let admin = t.admin().await;
+    let (id, key) = t.site(&admin, json!({ "name": "replay" })).await;
+    t.ok(
+        &admin,
+        Method::POST,
+        &format!("/api/sites/{id}/labels"),
+        json!({"name":"Pricing","rules":[{"kind":"path_prefix","value":"/pricing"}]}),
+    )
+    .await;
+    let mut event = view("/pricing");
+    event["event_id"] = json!("event-unique-123");
+    event["happened_at"] = json!(db::now());
+    let payload = batch(&key, "browser-replay", vec![event]);
+    t.collect(payload.clone()).await;
+    t.collect(payload).await;
+    assert_eq!(t.count("events").await, 1);
+    let views: i64 = sqlx::query_scalar("SELECT pageviews FROM people")
+        .fetch_one(&t.state.db)
+        .await
+        .unwrap();
+    assert_eq!(views, 1);
+    let hits: i64 = sqlx::query_scalar("SELECT hits FROM person_labels")
+        .fetch_one(&t.state.db)
+        .await
+        .unwrap();
+    assert_eq!(hits, 1);
+}
+
+#[tokio::test]
+async fn installation_receipts_are_site_scoped_and_never_enter_analytics() {
+    let t = TestApp::new().await;
+    let admin = t.admin().await;
+    let (id, key) = t.site(&admin, json!({ "name": "install" })).await;
+    let test = t
+        .ok(
+            &admin,
+            Method::POST,
+            &format!("/api/sites/{id}/installation-tests"),
+            json!({}),
+        )
+        .await;
+    let token = test["token"].as_str().unwrap();
+    let mut payload = batch(&key, "browser-install", vec![view("/")]);
+    payload["test_token"] = json!(token);
+    t.collect(payload).await;
+    assert_eq!(t.count("events").await, 0);
+    assert_eq!(t.count("people").await, 0);
+    let receipt = t
+        .get(
+            &admin,
+            &format!("/api/sites/{id}/installation-tests/{token}"),
+        )
+        .await;
+    assert_eq!(receipt["receipt"]["events"][0]["type"], "pageview");
+    let (_, member) = t.member(&admin, "outsider").await;
+    assert_eq!(
+        t.call(
+            Some(&member),
+            Method::GET,
+            &format!("/api/sites/{id}/installation-tests/{token}"),
+            None
+        )
+        .await
+        .0,
+        StatusCode::NOT_FOUND
+    );
+}
+
+#[tokio::test]
 async fn first_visitor_creates_the_admin_and_there_is_no_default_account() {
     let t = TestApp::new().await;
     let (status, state) = t.call(None, Method::GET, "/api/auth/state", None).await;
@@ -1873,4 +2020,353 @@ async fn engagement_cohorts_match_lists_exports_and_site_access() {
             StatusCode::BAD_REQUEST
         );
     }
+}
+
+#[tokio::test]
+async fn signed_subject_requires_server_secret_and_rejects_expiry_or_other_site() {
+    use hmac::{Hmac, Mac};
+    use sha2::Sha256;
+    let t = TestApp::new().await;
+    let admin = t.admin().await;
+    let (id, key) = t
+        .site(
+            &admin,
+            json!({"name":"signed","collection_policy":{"require_signed_identity":true}}),
+        )
+        .await;
+    let secret = t
+        .get(&admin, &format!("/api/sites/{id}/identity-secret"))
+        .await;
+    let expires = Utc::now().timestamp() + 900;
+    let mut mac =
+        Hmac::<Sha256>::new_from_slice(secret["secret"].as_str().unwrap().as_bytes()).unwrap();
+    mac.update(format!("{key}\nmember-signed\n{expires}").as_bytes());
+    let signature: String = mac
+        .finalize()
+        .into_bytes()
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect();
+    let mut payload = identify(
+        &key,
+        "signed-browser",
+        json!({"user_id":"member-signed","mutation_id":"signed-mutation-1","revision":100}),
+    );
+    assert_eq!(
+        t.collect_as(&payload, CHROME, None).await.0,
+        StatusCode::FORBIDDEN
+    );
+    payload["identify"]["proof"] = json!({"expires_at":expires,"signature":signature});
+    t.collect(payload.clone()).await;
+    let people = t
+        .get(&admin, &format!("/api/sites/{id}/people?kind=member"))
+        .await;
+    assert_eq!(people["total"], 1);
+    assert_eq!(people["items"][0]["identity_verified"], true);
+    let mut referenced = batch(
+        &key,
+        "signed-browser",
+        vec![json!({"type":"custom","event_id":"signed-context-1","name":"after-proof"})],
+    );
+    referenced["identity_context"] = json!({"mutation_id":"signed-mutation-1","revision":100});
+    t.collect(referenced).await;
+
+    payload["identify"]["proof"]["expires_at"] = json!(Utc::now().timestamp() - 1);
+    assert_eq!(
+        t.collect_as(&payload, CHROME, None).await.0,
+        StatusCode::FORBIDDEN
+    );
+    payload["identify"]["proof"]["expires_at"] = json!(expires);
+    let (_, other) = t.site(&admin, json!({"name":"other"})).await;
+    payload["key"] = json!(other);
+    assert_eq!(
+        t.collect_as(&payload, CHROME, None).await.0,
+        StatusCode::FORBIDDEN
+    );
+    let (_, member) = t.member(&admin, "nosign").await;
+    assert_eq!(
+        t.call(
+            Some(&member),
+            Method::GET,
+            &format!("/api/sites/{id}/identity-secret"),
+            None
+        )
+        .await
+        .0,
+        StatusCode::FORBIDDEN
+    );
+}
+
+#[tokio::test]
+async fn client_event_time_is_bounded_and_received_time_is_separate() {
+    let t = TestApp::new().await;
+    let admin = t.admin().await;
+    let (id, key) = t.site(&admin, json!({"name":"clock"})).await;
+    for at in [
+        Utc::now() - Duration::days(8),
+        Utc::now() + Duration::minutes(10),
+    ] {
+        let mut event = view("/");
+        event["event_id"] = json!("clock-invalid");
+        event["happened_at"] = json!(db::format_time(at));
+        assert_eq!(
+            t.collect_as(&batch(&key, "clock-browser", vec![event]), CHROME, None)
+                .await
+                .0,
+            StatusCode::BAD_REQUEST
+        );
+    }
+    let at = db::format_time(Utc::now() - Duration::minutes(5));
+    let mut event = view("/");
+    event["event_id"] = json!("clock-valid-1");
+    event["happened_at"] = json!(&at);
+    t.collect(batch(&key, "clock-browser", vec![event])).await;
+    let people = t.get(&admin, &format!("/api/sites/{id}/people")).await;
+    let pid = people["items"][0]["id"].as_i64().unwrap();
+    let events = t
+        .get(&admin, &format!("/api/sites/{id}/people/{pid}/events"))
+        .await;
+    assert_eq!(events["items"][0]["happened_at"], at);
+    assert_ne!(
+        events["items"][0]["received_at"],
+        events["items"][0]["happened_at"]
+    );
+}
+
+#[tokio::test]
+async fn expired_or_wrong_site_installation_tokens_never_fall_back_to_analytics() {
+    let t = TestApp::new().await;
+    let admin = t.admin().await;
+    let (id, key) = t.site(&admin, json!({"name":"test-owner"})).await;
+    let created = t
+        .ok(
+            &admin,
+            Method::POST,
+            &format!("/api/sites/{id}/installation-tests"),
+            json!({}),
+        )
+        .await;
+    let token = created["token"].as_str().unwrap();
+    let (_, other) = t.site(&admin, json!({"name":"not-test-owner"})).await;
+    let mut payload = batch(&other, "test-browser", vec![view("/")]);
+    payload["test_token"] = json!(token);
+    assert_eq!(
+        t.collect_as(&payload, CHROME, None).await.0,
+        StatusCode::FORBIDDEN
+    );
+    payload["key"] = json!(key);
+    sqlx::query("UPDATE installation_tests SET expires_at='2000-01-01T00:00:00Z'")
+        .execute(&t.state.db)
+        .await
+        .unwrap();
+    assert_eq!(
+        t.collect_as(&payload, CHROME, None).await.0,
+        StatusCode::FORBIDDEN
+    );
+    assert_eq!(t.count("events").await, 0);
+    assert_eq!(t.count("people").await, 0);
+}
+
+#[tokio::test]
+async fn replayed_legacy_identity_batch_cannot_undo_a_later_account_switch() {
+    let t = TestApp::new().await;
+    let admin = t.admin().await;
+    let (id, key) = t.site(&admin, json!({"name":"identity replay"})).await;
+    let mut a = batch(
+        &key,
+        "browser-review-123",
+        vec![
+            json!({"type":"pageview","url":"https://shop.example/a","event_id":"review-event-aaa"}),
+        ],
+    );
+    a["identify"] = json!({"user_id":"account-A","name":"old A"});
+    let mut b = batch(
+        &key,
+        "browser-review-123",
+        vec![
+            json!({"type":"pageview","url":"https://shop.example/b","event_id":"review-event-bbb"}),
+        ],
+    );
+    b["identify"] = json!({"user_id":"account-B","name":"current B"});
+    t.collect(a.clone()).await;
+    t.collect(b).await;
+    t.collect(a).await;
+    t.collect(batch(
+        &key,
+        "browser-review-123",
+        vec![json!({"type":"custom","name":"after-B","event_id":"review-event-ccc"})],
+    ))
+    .await;
+    let current: String = sqlx::query_scalar(
+        "SELECT p.user_id FROM devices d JOIN people p ON p.id=d.person_id WHERE d.site_id=?",
+    )
+    .bind(id)
+    .fetch_one(&t.state.db)
+    .await
+    .unwrap();
+    assert_eq!(current, "account-B");
+    let owner: String = sqlx::query_scalar(
+        "SELECT p.user_id FROM events e JOIN people p ON p.id=e.person_id WHERE e.name='after-B'",
+    )
+    .fetch_one(&t.state.db)
+    .await
+    .unwrap();
+    assert_eq!(owner, "account-B");
+    let identifies: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM events WHERE type='identify'")
+        .fetch_one(&t.state.db)
+        .await
+        .unwrap();
+    assert_eq!(identifies, 2);
+}
+
+#[tokio::test]
+async fn ordered_identity_only_replay_and_older_first_delivery_preserve_latest_subject_and_traits()
+{
+    let t = TestApp::new().await;
+    let admin = t.admin().await;
+    let (id, key) = t.site(&admin, json!({"name":"identity ordering"})).await;
+    let mutation = |user: &str, revision: i64, mutation: &str| {
+        identify(
+            &key,
+            "ordered-browser",
+            json!({"user_id":user,"revision":revision,"mutation_id":mutation,"name":user,"traits":{"plan":user}}),
+        )
+    };
+    let a = mutation("account-A", 100, "identity-mutation-A");
+    let b = mutation("account-B", 200, "identity-mutation-B");
+    t.collect(a.clone()).await;
+    t.collect(b.clone()).await;
+    t.collect(a).await;
+    // A different old claim never previously delivered is also stale, even with fresh event IDs.
+    let mut old = mutation("account-C", 150, "identity-mutation-C");
+    old["events"] = json!([{"type":"custom","name":"stale-event","event_id":"stale-event-001"}]);
+    t.collect(old).await;
+    // Reusing the accepted mutation cannot update its profile or insert another identify event.
+    let mut altered = b.clone();
+    altered["identify"]["name"] = json!("overwrite");
+    altered["identify"]["traits"] = json!({"plan":"overwrite"});
+    t.collect(altered).await;
+    // Legacy metadata-free identify cannot downgrade an already ordered device.
+    t.collect(identify(
+        &key,
+        "ordered-browser",
+        json!({"user_id":"account-A","name":"downgrade"}),
+    ))
+    .await;
+    t.collect(batch(
+        &key,
+        "ordered-browser",
+        vec![json!({"type":"custom","name":"after-newest","event_id":"ordered-after-001"})],
+    ))
+    .await;
+    let current:(String,String,String)=sqlx::query_as("SELECT p.user_id,p.name,p.traits FROM devices d JOIN people p ON p.id=d.person_id WHERE d.site_id=?").bind(id).fetch_one(&t.state.db).await.unwrap();
+    assert_eq!(
+        current,
+        (
+            "account-B".into(),
+            "account-B".into(),
+            r#"{"plan":"account-B"}"#.into()
+        )
+    );
+    let stale: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM events WHERE name='stale-event'")
+        .fetch_one(&t.state.db)
+        .await
+        .unwrap();
+    assert_eq!(stale, 0);
+    assert_eq!(t.count("people").await, 2);
+    let identifies: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM events WHERE type='identify'")
+        .fetch_one(&t.state.db)
+        .await
+        .unwrap();
+    assert_eq!(identifies, 2);
+    let owner:String=sqlx::query_scalar("SELECT p.user_id FROM events e JOIN people p ON p.id=e.person_id WHERE e.name='after-newest'").fetch_one(&t.state.db).await.unwrap();
+    assert_eq!(owner, "account-B");
+}
+
+#[tokio::test]
+async fn identity_order_metadata_is_paired_and_bounded_while_legacy_email_only_remains_usable() {
+    let t = TestApp::new().await;
+    let admin = t.admin().await;
+    let (_, key) = t
+        .site(&admin, json!({"name":"identity compatibility"}))
+        .await;
+    for metadata in [
+        json!({"mutation_id":"mutation-001"}),
+        json!({"revision":1}),
+        json!({"mutation_id":"bad","revision":1}),
+        json!({"mutation_id":"mutation-001","revision":0}),
+        json!({"mutation_id":"mutation-001","revision":9007199254740992_i64}),
+    ] {
+        let mut who = metadata;
+        who["user_id"] = json!("member");
+        assert_eq!(
+            t.collect_as(&identify(&key, "invalid-browser", who), CHROME, None)
+                .await
+                .0,
+            StatusCode::BAD_REQUEST
+        );
+    }
+    for email in ["a@example.com", "b@example.com", "a@example.com"] {
+        t.collect(identify(&key, "legacy-browser", json!({"email":email})))
+            .await;
+    }
+    let current: String =
+        sqlx::query_scalar("SELECT p.email FROM devices d JOIN people p ON p.id=d.person_id")
+            .fetch_one(&t.state.db)
+            .await
+            .unwrap();
+    assert_eq!(current, "a@example.com");
+}
+
+#[tokio::test]
+async fn event_identity_context_rejects_stale_delivery_without_requiring_a_new_signature() {
+    let t = TestApp::new().await;
+    let admin = t.admin().await;
+    let (_, key) = t.site(&admin, json!({"name":"event context"})).await;
+    for (user, revision, mutation) in [
+        ("A", 100, "context-mutation-A"),
+        ("B", 200, "context-mutation-B"),
+    ] {
+        t.collect(identify(
+            &key,
+            "context-browser",
+            json!({"user_id":user,"revision":revision,"mutation_id":mutation}),
+        ))
+        .await;
+    }
+    for (revision, mutation, name) in [
+        (100, "context-mutation-A", "stale-context"),
+        (200, "context-mutation-B", "current-context"),
+    ] {
+        let mut payload = batch(
+            &key,
+            "context-browser",
+            vec![
+                json!({"type":"custom","event_id":format!("context-event-{revision}"),"name":name}),
+            ],
+        );
+        payload["identity_context"] = json!({"revision":revision,"mutation_id":mutation});
+        t.collect(payload).await;
+    }
+    let events:Vec<(String,String)>=sqlx::query_as("SELECT e.name,p.user_id FROM events e JOIN people p ON p.id=e.person_id WHERE e.type='custom'").fetch_all(&t.state.db).await.unwrap();
+    assert_eq!(events, vec![("current-context".into(), "B".into())]);
+}
+
+#[tokio::test]
+async fn timestamped_legacy_identity_cannot_overwrite_a_newer_claim() {
+    let t = TestApp::new().await;
+    let admin = t.admin().await;
+    let (_, key) = t.site(&admin, json!({"name":"legacy timestamp"})).await;
+    for (user, at) in [("B", Utc::now()), ("A", Utc::now() - Duration::seconds(10))] {
+        let mut payload = identify(&key, "timestamp-browser", json!({"user_id":user}));
+        payload["events"] = json!([{"type":"pageview","url":"https://shop.example/","event_id":format!("timestamp-event-{user}"),"happened_at":db::format_time(at)}]);
+        t.collect(payload).await;
+    }
+    let current: String =
+        sqlx::query_scalar("SELECT p.user_id FROM devices d JOIN people p ON p.id=d.person_id")
+            .fetch_one(&t.state.db)
+            .await
+            .unwrap();
+    assert_eq!(current, "B");
+    assert_eq!(t.count("people").await, 1);
 }

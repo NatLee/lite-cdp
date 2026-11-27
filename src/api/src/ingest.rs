@@ -1,11 +1,10 @@
-//! 收追蹤資料：把送進來的內容整理乾淨，認出是哪個瀏覽器、哪個人，再把事件存起來。
+//! Deterministic, site-scoped identity and event ingestion.
 //!
-//! 一個瀏覽器（`anon_id`）一開始是一個匿名的人；`identify` 帶了 email 之後：
-//! - 這個 email 還沒出現過：匿名的人直接變成知道是誰的人。
-//! - 這個 email 已經有人了：匿名時期的事件併進那個人（同一個人換了一台裝置）。
-//! - 這個瀏覽器本來是另一個 email：之後的事件算在新的人身上，之前的不動（共用電腦）。
+//! Random browser IDs remain separate until an explicit stable `user_id` joins them.
+//! Legacy email-only identity remains supported. Distinct stable subjects never merge by email.
+//! Identified account switches redirect future events without moving the prior person's history.
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use sqlx::{Sqlite, SqlitePool, Transaction};
 
@@ -25,10 +24,26 @@ pub struct Payload {
     #[serde(default)]
     pub events: Vec<RawEvent>,
     pub identify: Option<RawIdentify>,
+    pub consent: Option<bool>,
+    pub test_token: Option<String>,
+    pub identity_context: Option<IdentityCursor>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct IdentityCursor {
+    pub mutation_id: String,
+    pub revision: i64,
+}
+impl IdentityCursor {
+    fn valid(&self) -> bool {
+        valid_id(&self.mutation_id, 8) && (1..=9_007_199_254_740_991).contains(&self.revision)
+    }
 }
 
 #[derive(Deserialize)]
 pub struct RawEvent {
+    pub event_id: Option<String>,
+    pub happened_at: Option<String>,
     #[serde(rename = "type")]
     pub kind: String,
     pub name: Option<String>,
@@ -40,14 +55,27 @@ pub struct RawEvent {
 
 #[derive(Deserialize)]
 pub struct RawIdentify {
+    pub mutation_id: Option<String>,
+    pub revision: Option<i64>,
+    pub user_id: Option<String>,
+    pub proof: Option<IdentityProof>,
     pub email: Option<String>,
     pub name: Option<String>,
     pub account: Option<String>,
     pub traits: Option<Map<String, Value>>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Deserialize)]
+pub struct IdentityProof {
+    pub expires_at: i64,
+    pub signature: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Default, Serialize)]
 pub struct Event {
+    pub event_id: String,
+    pub happened_at: Option<String>,
+    #[serde(rename = "type")]
     pub kind: &'static str,
     pub name: String,
     pub url: String,
@@ -61,6 +89,10 @@ pub struct Event {
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Identify {
+    pub mutation_id: String,
+    pub revision: Option<i64>,
+    pub user_id: String,
+    pub verified: bool,
     /// 小寫；空字串是沒帶 email
     pub email: String,
     pub name: Option<String>,
@@ -74,6 +106,7 @@ pub struct Batch {
     pub session_id: String,
     pub events: Vec<Event>,
     pub identify: Option<Identify>,
+    pub identity_context: Option<IdentityCursor>,
 }
 
 /// 最多留 `max` 個字元。
@@ -200,7 +233,26 @@ impl RawEvent {
             None => return Err("url 要是 http:// 或 https:// 開頭的網址".into()),
         };
         let referrer = truncate(self.referrer.as_deref().unwrap_or_default().trim(), MAX_URL);
+        let event_id = self.event_id.unwrap_or_default();
+        if !event_id.is_empty() && !valid_id(&event_id, 8) {
+            return Err("event_id 要 8 到 64 個英數字、- 或 _".into());
+        }
+        let happened_at = self
+            .happened_at
+            .map(|raw| -> Result<String, String> {
+                let at = chrono::DateTime::parse_from_rfc3339(&raw)
+                    .map_err(|_| "happened_at 必須是 RFC3339 時間".to_owned())?
+                    .with_timezone(&chrono::Utc);
+                let age = chrono::Utc::now().signed_duration_since(at);
+                if age > chrono::Duration::days(7) || age < chrono::Duration::minutes(-5) {
+                    return Err("happened_at 超過 7 天或在未來 5 分鐘以外".into());
+                }
+                Ok(crate::db::format_time(at))
+            })
+            .transpose()?;
         Ok(Event {
+            event_id,
+            happened_at,
             kind,
             name,
             url: url.to_owned(),
@@ -223,7 +275,24 @@ impl RawIdentify {
             v.map(|v| clean_text(Some(&v), max))
                 .filter(|v| !v.is_empty())
         };
+        let user_id = self.user_id.unwrap_or_default().trim().to_owned();
+        if user_id.len() > 128 || user_id.contains(char::is_control) {
+            return Err("user_id 最多 128 bytes，不能包含控制字元".into());
+        }
+        let mutation_id = self.mutation_id.unwrap_or_default();
+        if self.revision.is_some() != !mutation_id.is_empty()
+            || (!mutation_id.is_empty() && !valid_id(&mutation_id, 8))
+            || self
+                .revision
+                .is_some_and(|revision| !(1..=9_007_199_254_740_991).contains(&revision))
+        {
+            return Err("identify.mutation_id 與 revision 必須成對；ID 為 8–64 英數字，revision 為正的安全整數".into());
+        }
         Ok(Identify {
+            mutation_id,
+            revision: self.revision,
+            user_id,
+            verified: false,
             email,
             name: text(self.name, 80),
             account: text(self.account, 80),
@@ -253,7 +322,19 @@ impl Payload {
         if events.is_empty() && identify.is_none() {
             return Err("沒有事件，也沒有 identify".into());
         }
+        if self
+            .identity_context
+            .as_ref()
+            .is_some_and(|cursor| !cursor.valid())
+            || (self.identity_context.is_some() && identify.is_some())
+        {
+            return Err(
+                "identity_context 必須是有效的 mutation_id/revision，且不能與 identify 同時提供"
+                    .into(),
+            );
+        }
         Ok(Batch {
+            identity_context: self.identity_context,
             anon_id: self.anon_id,
             session_id,
             events,
@@ -319,11 +400,13 @@ pub fn describe_user_agent(ua: &str) -> (&'static str, &'static str) {
 pub struct Stored {
     pub person_id: i64,
     pub events: usize,
+    pub identity_status: Option<&'static str>,
 }
 
 struct Person {
     id: i64,
     email: String,
+    user_id: String,
 }
 
 async fn new_person(
@@ -392,45 +475,62 @@ async fn apply_identify(
 ) -> sqlx::Result<(i64, bool)> {
     let mut person_id = current.id;
     let mut newly = false;
-    if !identify.email.is_empty() && identify.email != current.email {
+    if !identify.user_id.is_empty() {
+        let known: Option<i64> =
+            sqlx::query_scalar("SELECT id FROM people WHERE site_id=? AND user_id=?")
+                .bind(site_id)
+                .bind(&identify.user_id)
+                .fetch_optional(&mut **tx)
+                .await?;
+        let may_upgrade = current.user_id.is_empty()
+            && (current.email.is_empty()
+                || (!identify.email.is_empty() && current.email == identify.email));
+        person_id = match known {
+            Some(id) => {
+                if id != current.id && may_upgrade {
+                    merge_people(tx, current.id, id).await?;
+                }
+                id
+            }
+            None if may_upgrade => current.id,
+            None => new_person(tx, site_id, now).await?,
+        };
+        newly = current.user_id != identify.user_id;
+        sqlx::query("UPDATE people SET user_id=?, email=CASE WHEN ? != '' THEN ? ELSE email END, identified_at=coalesce(identified_at,?), identity_verified=max(identity_verified,?) WHERE id=?")
+            .bind(&identify.user_id).bind(&identify.email).bind(&identify.email).bind(now).bind(identify.verified).bind(person_id).execute(&mut **tx).await?;
+    } else if !identify.email.is_empty() && identify.email != current.email {
         newly = true;
         let known: Option<i64> =
-            sqlx::query_scalar("SELECT id FROM people WHERE site_id = ? AND email = ?")
+            sqlx::query_scalar("SELECT id FROM people WHERE site_id=? AND email=? AND user_id=''")
                 .bind(site_id)
                 .bind(&identify.email)
                 .fetch_optional(&mut **tx)
                 .await?;
-        match (known, current.email.is_empty()) {
-            (Some(known), true) => {
-                merge_people(tx, current.id, known).await?;
-                person_id = known;
+        let anonymous = current.email.is_empty() && current.user_id.is_empty();
+        person_id = match (known, anonymous) {
+            (Some(id), true) => {
+                merge_people(tx, current.id, id).await?;
+                id
             }
-            (Some(known), false) => person_id = known,
-            (None, true) => {
-                sqlx::query("UPDATE people SET email = ?, identified_at = ? WHERE id = ?")
-                    .bind(&identify.email)
-                    .bind(now)
-                    .bind(current.id)
-                    .execute(&mut **tx)
-                    .await?;
-            }
-            (None, false) => {
-                person_id = new_person(tx, site_id, now).await?;
-                sqlx::query("UPDATE people SET email = ?, identified_at = ? WHERE id = ?")
-                    .bind(&identify.email)
-                    .bind(now)
-                    .bind(person_id)
-                    .execute(&mut **tx)
-                    .await?;
-            }
-        }
-        if person_id != current.id {
-            sqlx::query("UPDATE devices SET person_id = ? WHERE id = ?")
-                .bind(person_id)
-                .bind(device_id)
-                .execute(&mut **tx)
-                .await?;
-        }
+            (Some(id), false) => id,
+            (None, true) => current.id,
+            (None, false) => new_person(tx, site_id, now).await?,
+        };
+        sqlx::query(
+            "UPDATE people SET email=?, identified_at=coalesce(identified_at,?) WHERE id=?",
+        )
+        .bind(&identify.email)
+        .bind(now)
+        .bind(person_id)
+        .execute(&mut **tx)
+        .await?;
+    }
+    if person_id != current.id {
+        sqlx::query("UPDATE devices SET person_id=? WHERE id=?")
+            .bind(person_id)
+            .bind(device_id)
+            .execute(&mut **tx)
+            .await?;
     }
 
     if identify.name.is_some() || identify.account.is_some() || !identify.traits.is_empty() {
@@ -475,11 +575,11 @@ async fn insert_event(
     tx: &mut Transaction<'_, Sqlite>,
     at: &NewEvent<'_>,
     event: &Event,
-) -> sqlx::Result<()> {
-    sqlx::query(
-        "INSERT INTO events (site_id, person_id, device_id, session_id, type, name, url, path,
-            title, referrer, referrer_host, props, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+) -> sqlx::Result<bool> {
+    let inserted = sqlx::query(
+        "INSERT OR IGNORE INTO events (site_id, person_id, device_id, session_id, type, name, url, path,
+            title, referrer, referrer_host, props, created_at, event_id, received_at, happened_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(at.site_id)
     .bind(at.person_id)
@@ -493,10 +593,13 @@ async fn insert_event(
     .bind(&event.referrer)
     .bind(&event.referrer_host)
     .bind(&event.props)
+    .bind(event.happened_at.as_deref().unwrap_or(at.now))
+    .bind(&event.event_id)
     .bind(at.now)
+    .bind(&event.happened_at)
     .execute(&mut **tx)
     .await?;
-    Ok(())
+    Ok(inserted.rows_affected() > 0)
 }
 
 /// 把一批資料存進去。`now` 是事件的時間。
@@ -521,23 +624,30 @@ pub async fn store_in(
     user_agent: &str,
     now: &str,
 ) -> sqlx::Result<Stored> {
-    let device: Option<(i64, i64, String)> = sqlx::query_as(
-        "SELECT d.id, p.id, p.email FROM devices d JOIN people p ON p.id = d.person_id
+    let device: Option<(i64, i64, String, String)> = sqlx::query_as(
+        "SELECT d.id, p.id, p.email, p.user_id FROM devices d JOIN people p ON p.id = d.person_id
          WHERE d.site_id = ? AND d.anon_id = ?",
     )
     .bind(site_id)
     .bind(&batch.anon_id)
     .fetch_optional(&mut **tx)
     .await?;
+    if device.is_none() && batch.identity_context.is_some() {
+        return Ok(Stored {
+            person_id: 0,
+            events: 0,
+            identity_status: Some("stale"),
+        });
+    }
     let (device_id, person) = match device {
-        Some((device_id, id, email)) => {
+        Some((device_id, id, email, user_id)) => {
             sqlx::query("UPDATE devices SET last_seen = ?, user_agent = ? WHERE id = ?")
                 .bind(now)
                 .bind(user_agent)
                 .bind(device_id)
                 .execute(&mut **tx)
                 .await?;
-            (device_id, Person { id, email })
+            (device_id, Person { id, email, user_id })
         }
         None => {
             let id = new_person(tx, site_id, now).await?;
@@ -555,7 +665,8 @@ pub async fn store_in(
             .await?
             .last_insert_rowid();
             let email = String::new();
-            (device_id, Person { id, email })
+            let user_id = String::new();
+            (device_id, Person { id, email, user_id })
         }
     };
 
@@ -567,31 +678,131 @@ pub async fn store_in(
         session_id: &batch.session_id,
         now,
     };
+    let mut identity_status = None;
+    if let Some(cursor) = &batch.identity_context {
+        let (revision, mutation): (i64, String) =
+            sqlx::query_as("SELECT identity_revision,identity_mutation_id FROM devices WHERE id=?")
+                .bind(device_id)
+                .fetch_one(&mut **tx)
+                .await?;
+        if revision != cursor.revision || mutation != cursor.mutation_id {
+            return Ok(Stored {
+                person_id,
+                events: 0,
+                identity_status: Some("stale"),
+            });
+        }
+        identity_status = Some("current");
+    }
     if let Some(identify) = &batch.identify {
-        let (id, newly) = apply_identify(tx, site_id, device_id, person, identify, now).await?;
-        person_id = id;
-        at.person_id = id;
-        // 網站通常每一頁都會呼叫 identify；只有第一次認出來時記一筆
-        if newly {
-            let page = batch.events.first();
-            let event = Event {
-                kind: "identify",
-                name: identify.email.clone(),
-                url: page.map(|e| e.url.clone()).unwrap_or_default(),
-                path: page.map(|e| e.path.clone()).unwrap_or_default(),
-                title: page.map(|e| e.title.clone()).unwrap_or_default(),
-                referrer: String::new(),
-                referrer_host: String::new(),
-                props: "{}".into(),
-            };
-            insert_event(tx, &at, &event).await?;
+        let (revision, mutation_id, at_ms): (i64, String, i64) = sqlx::query_as(
+            "SELECT identity_revision,identity_mutation_id,identity_at_ms FROM devices WHERE id=?",
+        )
+        .bind(device_id)
+        .fetch_one(&mut **tx)
+        .await?;
+        let event_time = batch
+            .events
+            .iter()
+            .filter_map(|event| event.happened_at.as_ref())
+            .filter_map(|time| chrono::DateTime::parse_from_rfc3339(time).ok())
+            .map(|time| time.timestamp_millis())
+            .max()
+            .unwrap_or(0);
+        let apply = if let Some(incoming) = identify.revision {
+            if incoming < revision || (incoming == revision && identify.mutation_id != mutation_id)
+            {
+                // Never attribute a late old-account envelope to the newer account.
+                return Ok(Stored {
+                    person_id,
+                    events: 0,
+                    identity_status: Some("stale"),
+                });
+            }
+            if incoming == revision {
+                identity_status = Some("replayed");
+                false
+            } else {
+                true
+            }
+        } else {
+            if revision > 0 || (event_time > 0 && event_time < at_ms) {
+                return Ok(Stored {
+                    person_id,
+                    events: 0,
+                    identity_status: Some("stale"),
+                });
+            }
+            // Event-keyed legacy retries must not mutate identity before business-event dedup.
+            let mut all_replayed = !batch.events.is_empty();
+            for event in &batch.events {
+                if event.event_id.is_empty()
+                    || !sqlx::query_scalar::<_, bool>(
+                        "SELECT EXISTS(SELECT 1 FROM events WHERE site_id=? AND event_id=?)",
+                    )
+                    .bind(site_id)
+                    .bind(&event.event_id)
+                    .fetch_one(&mut **tx)
+                    .await?
+                {
+                    all_replayed = false;
+                    break;
+                }
+            }
+            if all_replayed {
+                identity_status = Some("replayed");
+                false
+            } else {
+                true
+            }
+        };
+        if apply {
+            let (id, newly) = apply_identify(tx, site_id, device_id, person, identify, now).await?;
+            sqlx::query("UPDATE devices SET identity_revision=?,identity_mutation_id=?,identity_at_ms=max(identity_at_ms,?) WHERE id=?")
+            .bind(identify.revision.unwrap_or(0)).bind(&identify.mutation_id).bind(event_time).bind(device_id).execute(&mut **tx).await?;
+            identity_status = Some("applied");
+            person_id = id;
+            at.person_id = id;
+            // 網站通常每一頁都會呼叫 identify；只有第一次認出來時記一筆
+            if newly {
+                let page = batch.events.first();
+                let event = Event {
+                    event_id: if identify.mutation_id.is_empty() {
+                        String::new()
+                    } else {
+                        format!("identity:{}:{}", batch.anon_id, identify.mutation_id)
+                    },
+                    happened_at: None,
+                    kind: "identify",
+                    name: if identify.user_id.is_empty() {
+                        identify.email.clone()
+                    } else {
+                        identify.user_id.clone()
+                    },
+                    url: page.map(|e| e.url.clone()).unwrap_or_default(),
+                    path: page.map(|e| e.path.clone()).unwrap_or_default(),
+                    title: page.map(|e| e.title.clone()).unwrap_or_default(),
+                    referrer: String::new(),
+                    referrer_host: String::new(),
+                    props: "{}".into(),
+                };
+                insert_event(tx, &at, &event).await?;
+            }
         }
     }
 
     let rules = labels::site_rules(tx, site_id).await?;
     let mut hits: Vec<(i64, i64)> = Vec::new();
+    let mut pageviews = 0;
+    let mut accepted = 0;
     for event in &batch.events {
-        insert_event(tx, &at, event).await?;
+        if !insert_event(tx, &at, event).await? {
+            continue;
+        }
+        accepted += 1;
+        if event.kind == "pageview" {
+            pageviews += 1;
+        }
         for label_id in labels::matching(&rules, event) {
             match hits.iter_mut().find(|(id, _)| *id == label_id) {
                 Some((_, count)) => *count += 1,
@@ -613,7 +824,6 @@ pub async fn store_in(
         .await?;
     }
 
-    let pageviews = batch.events.iter().filter(|e| e.kind == "pageview").count() as i64;
     sqlx::query(
         "UPDATE people SET last_seen = max(last_seen, ?), pageviews = pageviews + ? WHERE id = ?",
     )
@@ -625,7 +835,8 @@ pub async fn store_in(
 
     Ok(Stored {
         person_id,
-        events: batch.events.len(),
+        events: accepted,
+        identity_status,
     })
 }
 

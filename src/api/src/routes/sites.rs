@@ -14,6 +14,7 @@ use crate::{
     config::origin_of,
     db,
     error::{AppError, AppResult},
+    policy::CollectionPolicy,
     state::AppState,
 };
 
@@ -24,6 +25,7 @@ struct SiteRow {
     url: String,
     key: String,
     allowed_origins: String,
+    collection_policy: String,
     active: bool,
     created_at: String,
     people: i64,
@@ -46,6 +48,7 @@ pub struct Site {
     /// 追蹤程式碼用的金鑰；會出現在網頁原始碼裡，不是秘密
     key: String,
     allowed_origins: Vec<String>,
+    collection_policy: CollectionPolicy,
     active: bool,
     created_at: String,
     /// 總共幾個人
@@ -58,9 +61,9 @@ pub struct Site {
 }
 
 const SITE_SELECT: &str =
-    "SELECT s.id, s.name, s.url, s.key, s.allowed_origins, s.active, s.created_at,
+    "SELECT s.id, s.name, s.url, s.key, s.allowed_origins, s.collection_policy, s.active, s.created_at,
         (SELECT COUNT(*) FROM people p WHERE p.site_id = s.id) AS people,
-        (SELECT COUNT(*) FROM people p WHERE p.site_id = s.id AND p.email != '') AS identified,
+        (SELECT COUNT(*) FROM people p WHERE p.site_id = s.id AND (p.email != '' OR p.user_id != '')) AS identified,
         (SELECT MAX(e.created_at) FROM events e WHERE e.site_id = s.id) AS last_event_at
      FROM sites s";
 
@@ -94,6 +97,7 @@ fn present(row: SiteRow, members: Vec<Member>) -> Site {
         url: row.url,
         key: row.key,
         allowed_origins: parse_list(&row.allowed_origins),
+        collection_policy: CollectionPolicy::parse(&row.collection_policy),
         active: row.active,
         created_at: row.created_at,
         people: row.people,
@@ -175,6 +179,7 @@ pub struct SiteBody {
     name: Option<String>,
     url: Option<String>,
     allowed_origins: Option<Vec<String>>,
+    collection_policy: Option<CollectionPolicy>,
     active: Option<bool>,
     member_ids: Option<Vec<i64>>,
 }
@@ -264,9 +269,11 @@ pub async fn create(
     }
     let url = clean_url(body.url.as_deref().unwrap_or_default())?;
     let origins = clean_origins(body.allowed_origins.as_deref().unwrap_or_default())?;
+    let policy = body.collection_policy.clone().unwrap_or_default();
+    policy.validate().map_err(AppError::bad)?;
     let id = sqlx::query(
-        "INSERT INTO sites (name, url, key, allowed_origins, active, created_at)
-         VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO sites (name, url, key, allowed_origins, active, created_at, collection_policy, identity_secret)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&name)
     .bind(url)
@@ -274,6 +281,8 @@ pub async fn create(
     .bind(origins)
     .bind(body.active.unwrap_or(true))
     .bind(db::now())
+    .bind(serde_json::to_string(&policy)?)
+    .bind(auth::random_hex(32))
     .execute(&state.db)
     .await?
     .last_insert_rowid();
@@ -304,11 +313,14 @@ pub async fn update(
             .as_deref()
             .unwrap_or(&current.allowed_origins),
     )?;
-    sqlx::query("UPDATE sites SET name = ?, url = ?, allowed_origins = ?, active = ? WHERE id = ?")
+    let policy = body.collection_policy.unwrap_or(current.collection_policy);
+    policy.validate().map_err(AppError::bad)?;
+    sqlx::query("UPDATE sites SET name = ?, url = ?, allowed_origins = ?, active = ?, collection_policy = ? WHERE id = ?")
         .bind(name)
         .bind(url)
         .bind(origins)
         .bind(body.active.unwrap_or(current.active))
+        .bind(serde_json::to_string(&policy)?)
         .bind(id)
         .execute(&state.db)
         .await?;

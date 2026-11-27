@@ -2,6 +2,7 @@
 
 mod auth;
 mod collect;
+mod collection;
 mod labels;
 mod overview;
 mod pages;
@@ -46,6 +47,18 @@ fn api_routes() -> Router<AppState> {
                 .delete(sites::remove),
         )
         .route("/sites/{id}/rotate-key", post(sites::rotate_key))
+        .route(
+            "/sites/{id}/installation-tests",
+            post(collection::create_test),
+        )
+        .route(
+            "/sites/{id}/installation-tests/{token}",
+            get(collection::receipt),
+        )
+        .route(
+            "/sites/{id}/identity-secret",
+            get(collection::identity_secret),
+        )
         .route("/sites/{id}/overview", get(overview::overview))
         .route("/sites/{id}/people", get(people::list))
         .route("/sites/{id}/people/export", get(people::export))
@@ -96,6 +109,7 @@ pub fn router(state: AppState) -> Router {
             post(collect::collect).options(collect::preflight),
         )
         .route("/t.js", get(collect::tracker))
+        .route("/tracker-config/{key}", get(collection::config))
         .fallback_service(spa)
         .layer(SetResponseHeaderLayer::if_not_present(
             header::X_CONTENT_TYPE_OPTIONS,

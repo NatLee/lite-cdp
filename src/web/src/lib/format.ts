@@ -28,15 +28,15 @@ export const ROLE_LABEL: Record<Role, string> = { admin: "管理員", member: "�
 export const KIND_LABEL: Record<PersonKind, string> = { all: "所有人", member: "會員", anonymous: "匿名訪客" };
 
 /** 知道 email 的人顯示名字或 email；匿名訪客只有編號。 */
-export function personName(p: { id: number; email: string; name: string }): string {
-  return p.name || p.email || `匿名訪客 #${p.id}`;
+export function personName(p: { id: number; email: string; name: string; user_id?: string }): string {
+  return p.name || p.email || p.user_id || `匿名訪客 #${p.id}`;
 }
 
 export const COLORS: BadgeTone[] = ["neutral", "brand", "green", "amber", "red", "sky", "violet", "pink"];
 
 export const COLOR_LABEL: Record<BadgeTone, string> = {
   neutral: "灰",
-  brand: "靛",
+  brand: "橄欖",
   green: "綠",
   amber: "黃",
   red: "紅",

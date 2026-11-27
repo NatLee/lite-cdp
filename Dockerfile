@@ -12,6 +12,7 @@ RUN pnpm build
 
 # 2. 後端
 FROM rust:1-trixie AS api
+ARG CARGO_BUILD_JOBS=2
 WORKDIR /workspace/src/api
 COPY src/api/Cargo.toml src/api/Cargo.lock ./
 COPY crates/access-kit /workspace/crates/access-kit

@@ -113,7 +113,7 @@ export function JourneyMap({ events }: { events: TimelineEvent[] }) {
                   x2={width}
                   y1={y}
                   y2={y}
-                  stroke="#29415c"
+                  stroke="#454a40"
                   strokeDasharray="3 7"
                 />
               ))}
@@ -125,7 +125,7 @@ export function JourneyMap({ events }: { events: TimelineEvent[] }) {
                   })
                   .join(" ")}
                 fill="none"
-                stroke="#86b9eb"
+                stroke="#c7e45b"
                 strokeWidth="2"
               />
               {items.map((event, i) => {
@@ -136,8 +136,8 @@ export function JourneyMap({ events }: { events: TimelineEvent[] }) {
                     cx={p.x}
                     cy={p.y}
                     r={9}
-                    fill="#0a1d33"
-                    stroke="#6895c4"
+                    fill="#101211"
+                    stroke="#b4bba8"
                     strokeWidth="1"
                   />
                 );
@@ -308,7 +308,7 @@ export function JourneyExplorer({ siteId }: { siteId: number }) {
               <span>
                 <b>{personName(person)}</b>
                 <small>
-                  {person.email ? "已辨識會員" : "匿名訪客"} ·{" "}
+                  {(person.email || person.user_id) ? "已辨識會員" : "匿名訪客"} ·{" "}
                   {timeAgo(person.last_seen)}
                 </small>
               </span>

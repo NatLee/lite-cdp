@@ -62,3 +62,46 @@ test("網址裡的網站看不到時說找不到", async () => {
 
   expect(await screen.findByText("找不到這個網站")).toBeInTheDocument();
 });
+
+test("框架教學提供 Next 根版型且不重複送 router pageview", async () => {
+  fakeApi({ ...common, "GET /auth/state": () => ({ setup_required: false, user: member }) });
+  renderApp("/s/7/install");
+  await userEvent.click(await screen.findByRole("tab", { name: "Next.js" }));
+  expect(screen.getByLabelText("追蹤程式碼")).toHaveTextContent('strategy="afterInteractive"');
+  expect(screen.getByLabelText("追蹤程式碼")).toHaveTextContent('data-key="abcd1234abcd1234"');
+  expect(screen.getByText(/不要再加 router/)).toBeInTheDocument();
+});
+
+test("模擬器只在明確相同會員 ID 登入後合併裝置", async () => {
+  const calls = fakeApi({ ...common, "GET /auth/state": () => ({ setup_required: false, user: member }) });
+  renderApp("/s/7/install");
+  await userEvent.click(await screen.findByRole("button", { name: "登入同一會員" }));
+  await userEvent.click(screen.getByRole("button", { name: "另一台裝置" }));
+  expect(screen.getByLabelText("模擬人物數")).toHaveTextContent("2");
+  await userEvent.click(screen.getByRole("button", { name: "登入同一會員" }));
+  expect(screen.getByLabelText("模擬人物數")).toHaveTextContent("1");
+  expect(calls.filter(c => c.method === "POST")).toHaveLength(0);
+});
+
+test("站點採集政策明確儲存並生成可見設定", async () => {
+  const calls = fakeApi({ ...common, "GET /auth/state": () => ({ setup_required: false, user: admin }), "GET /users": () => accounts, "PATCH /sites/7": () => site });
+  renderApp("/s/7/install");
+  await userEvent.click(await screen.findByRole("button", { name: "使用最少採集設定" }));
+  expect(screen.getByRole("checkbox", { name: "要求訪客同意" })).toBeChecked();
+  await userEvent.click(screen.getByRole("button", { name: "儲存採集設定" }));
+  await waitFor(() => expect(calls.some(c => c.method === "PATCH")).toBe(true));
+  expect(calls.find(c => c.method === "PATCH")?.body).toMatchObject({ collection_policy: {consent_required:true,auto_click:false,query_mode:"strip"} });
+});
+
+test("模擬器拒絕期間不建立編號，再次同意從新匿名開始", async () => {
+  fakeApi({ ...common, "GET /auth/state": () => ({ setup_required: false, user: member }) });
+  renderApp("/s/7/install");
+  await userEvent.click(await screen.findByRole("button", { name: "登入同一會員" }));
+  await userEvent.click(screen.getByRole("button", { name: "拒絕同意" }));
+  await userEvent.click(screen.getByRole("button", { name: "另一台裝置" }));
+  expect(screen.getByLabelText("模擬人物數")).toHaveTextContent("1");
+  expect(screen.getByLabelText("模擬 payload")).toHaveTextContent("沒有 ID");
+  await userEvent.click(screen.getByRole("button", { name: "同意採集" }));
+  expect(screen.getByLabelText("模擬 payload")).not.toHaveTextContent('"identify"');
+  expect(screen.getByLabelText("模擬 payload")).toHaveTextContent("demo-consent");
+});

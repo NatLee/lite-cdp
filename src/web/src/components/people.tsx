@@ -40,12 +40,12 @@ export function Avatar({
   person,
   large,
 }: {
-  person: { email: string; name: string };
+  person: { email: string; name: string; user_id?: string };
   large?: boolean;
 }) {
-  const known = person.email !== "";
+  const known = Boolean(person.email || person.user_id);
   const letter = known
-    ? (Array.from(person.name || person.email)[0] ?? "?").toUpperCase()
+    ? (Array.from(person.name || person.email || person.user_id || "?")[0] ?? "?").toUpperCase()
     : "?";
   return (
     <span
@@ -67,7 +67,7 @@ export function PersonLink({
   person,
 }: {
   siteId: number;
-  person: { id: number; email: string; name: string };
+  person: { id: number; email: string; name: string; user_id?: string };
 }) {
   return (
     <Link

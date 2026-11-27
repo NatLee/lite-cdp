@@ -1,53 +1,49 @@
 <p align="center">
-  <img src="docs/images/cover.svg" alt="Lite CDP：從一次造訪，到真正認識" width="100%">
+  <img src="docs/images/cover.svg" alt="Lite CDP Signal Console：清楚看見資料與身分如何連接" width="100%">
 </p>
 
 <p align="center">
   <a href="https://github.com/NatLee/lite-cdp/actions/workflows/ci.yml"><img src="https://github.com/NatLee/lite-cdp/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <img src="https://img.shields.io/badge/backend-Rust%20%2B%20axum-b7410e" alt="Rust + axum">
-  <img src="https://img.shields.io/badge/frontend-React%20%2B%20Tailwind-124bb6" alt="React + Tailwind">
+  <img src="https://img.shields.io/badge/frontend-React%20%2B%20Tailwind-596d00" alt="React + Tailwind">
   <img src="https://img.shields.io/badge/docker-nginx%20%2B%20API-2496ed" alt="Docker">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT">
 </p>
 
 流量分析工具會告訴你「這個月有幾個人來」，但行銷和業務想知道的通常是另一件事：**哪些人**看了價格頁三次卻沒留資料、上個月買過咖啡豆的人最近有沒有再回來、放進購物車沒結帳的是誰。
 
-Lite CDP 是一個自己架的小型顧客資料平台。在網站上貼一行程式碼，它就開始記每個訪客看了哪些頁、點了什麼；訪客登入或留下 email 的那一刻，之前匿名看過的紀錄會併到這個人身上。接著用規則幫人貼標籤，再用標籤和條件組出名單，匯出成 CSV 拿去寄信或投廣告。
+Lite CDP 是一個自己架的小型顧客資料平台。每個網站有自己的採集設定，決定何時可以記錄、收哪些資料。登入後由網站明確傳入穩定的 `user_id`，把該瀏覽器的匿名紀錄接到會員身上；不以 IP、瀏覽器特徵或 LLM 猜測身分。接著用規則幫人貼標籤，再用標籤和條件組出名單，匯出成 CSV 拿去寄信或投廣告。
 
 一份 Docker Compose 啟動 nginx 前端與內部 Rust API，資料存於 SQLite。資料留在你自己的機器上。
 
-## 三步讀懂一次來訪
+## 先看清楚，再開始採集
 
-以下三張圖來自隔離的內建 demo，連續追蹤同一位訪客、同一個已記錄的 `session_id` 與同一筆事件。封面是獨立的航線插畫，操作圖則取自真實介面。
+Signal Console 用石墨黑、暖白與橄欖色呈現三件事：**送進來什麼、為什麼認為是同一個人、哪些事件真的收到**。以下畫面來自隔離的虛構 demo。封面是可編輯的 [SVG](docs/images/cover.svg)，兩條路徑只在明確相同會員 ID 時合流。
 
-### 1. 選訪客，再選一次來訪
+### 1. 試著登入兩台裝置
 
-在總覽左側選一位已辨識的訪客，再用來訪選單選一組事件。圖中路徑依資料庫中的 session 分組，節點等距表示事件順序；沒有 session ID 的事件不會被串成一次來訪。
+互動模擬器展示再次造訪、跨裝置登入、登出、清除儲存、拒絕同意與重複安裝。左側改輸入，中間看送出前的 payload，右側看身分匹配。所有操作都留在本機示範，不寫入 analytics。
 
-![步驟一：選定同一位訪客與一次已記錄的來訪（總覽航圖局部）](docs/images/workflow-01.png)
+![身分模擬器：兩個瀏覽器明確送出相同會員 ID 後合流](docs/images/signal-identity-light.png)
 
-### 2. 選事件，讀取內容
+### 2. 選擇採集範圍，依框架安裝
 
-以鍵盤選取自訂事件節點，EVENT FOCUS 隨之顯示名稱、頁面路徑、時間、來源與已記錄屬性。這是選取事件的原始資訊，不代表推測出的轉換率。
+設定同意、DNT、自動瀏覽／點擊／捲動、SPA 模式、query 與來源清理、忽略區塊、traits 白名單和身分政策。可直接選最少採集設定；必須按儲存才會套用。HTML、React/Vite、Next.js、Vue/Vite、Nuxt 3/4 與 GTM 都有範例與生命週期說明。
 
-![步驟二：同一次來訪中的自訂事件與 EVENT FOCUS（總覽航圖局部）](docs/images/workflow-02.png)
+![框架安裝與同意／登入生命週期教學](docs/images/signal-install-light.png)
 
-### 3. 開啟同一人的完整時間軸
+### 3. 看實際回執，再追蹤旅程
 
-點「開啟個人旅程」，進入同一人的資料頁。來訪選單仍可選回同一組 session 與事件，下方逐筆紀錄包含此人的其他來訪；更多紀錄可按「更早的」載入。重拍腳本會載入所有分頁並核對事件總數，圖中保留頁面頂部與逐筆紀錄開頭。
+建立 15 分鐘的安裝測試碼，在被追蹤網站載入測試 snippet，回來取得 collector 回執。它會顯示清理後的事件、來源和身分簽署狀態，**不建立人物或增加瀏覽數**。正式事件進入旅程後，可按 session 與事件種類閱讀每一步。
 
-![步驟三：同一位訪客的個人時間軸，保留相同來訪與事件](docs/images/workflow-03.png)
+![以實際 session 分組的顧客旅程](docs/images/screenshot-journey-dark.png)
 
-[觀看同一次來訪的事件游標與詳情切換（WebM）](docs/images/feature-motion.webm)。游標依實際選取事件以 180 ms 移動，詳情同步呈現原始時間與屬性；可用方向鍵、Home、End 選事件。節點等距只表示順序。系統啟用「減少動態」時游標與詳情立即到位，鍵盤焦點仍保留。
-
-前兩張是 1440 px 桌面視窗內的航圖元件裁切；第三張為完整視窗。重拍與資料一致性檢查見 [操作驗證](docs/workflow-verification.md) 與 [capture-workflow.py](docs/capture-workflow.py)。腳本只讀取 demo 資料。
-
-新版來源樣式、桌面／手機檢查與錄影驗證見 [主題動態驗證](docs/themed-motion-verification.md)。
+[追蹤與整合契約](docs/tracking.md) · [驗證與重拍方式](docs/signal-console-verification.md)
 
 ## 功能
 
-- **一行程式碼就能裝**：自動記錄瀏覽、點擊和捲動深度，單頁應用（SPA）換網址也算。追蹤程式碼壓縮前約 7 KB，不用 cookie，不載入任何第三方的東西。
-- **把匿名訪客認出來**：呼叫 `identify` 之後，這個瀏覽器之前的匿名紀錄會併到這個人身上；同一個 email 在別的裝置登入也會併在一起。
+- **一行程式碼就能裝**：可設定自動記錄瀏覽、點擊和捲動深度，支援 history、hash 與手動 SPA。追蹤器不建立 cookie，不載入第三方程式。
+- **把匿名訪客認出來**：以網站內穩定的 `user_id` 連接多個裝置；舊版 email-only identify 保持相容且可關閉。不同會員 ID 不會因共用 email 而合併。
 - **顧客行為航圖**：從最近出現的訪客選一人，再選一次來訪。瀏覽、互動、辨識分列成事件路徑，點節點查看時間、頁面、來源與屬性。
 - **每個人的完整時間軸**：看了哪些頁、從哪裡來、用什麼裝置、觸發過哪些事件，一次工作階段一段。
 - **標籤**：用規則描述「做過什麼事的人」（看過某個路徑底下的頁面、網址或標題含某些字、觸發過某個事件），可以設定要符合幾次才算。規則改了，舊資料會跟著重算。
@@ -62,7 +58,7 @@ Lite CDP 是一個自己架的小型顧客資料平台。在網站上貼一行�
 
 ## 畫面與工作流程
 
-以墨藍與同色系淺藍構成「Journey Observatory / 顧客行為航圖」：網站切換和功能導覽位於上方，保留完整寬度給名單、身份與行為時間軸。所有數字來自 API；截圖使用內建虛構 demo 資料。
+以石墨、暖白與單一橄欖重點色構成「Signal Console」：網站切換和功能導覽位於上方，保留完整寬度給名單、身份與行為時間軸。所有數字來自 API；截圖使用內建虛構 demo 資料。
 
 ### 從一次來訪開始
 
@@ -96,7 +92,6 @@ Lite CDP 是一個自己架的小型顧客資料平台。在網站上貼一行�
 
 ![標籤](docs/images/screenshot-labels-light.png)
 ![安裝](docs/images/screenshot-install-light.png)
-![登入](docs/images/screenshot-login-light.png)
 ![深色總覽](docs/images/screenshot-overview-dark.png)
 <img src="docs/images/screenshot-mobile.png" alt="手機顧客總覽" width="390">
 
@@ -131,7 +126,8 @@ flowchart LR
    <script async src="http://127.0.0.1:8585/t.js" data-key="你的追蹤金鑰"></script>
    ```
 
-3. 打開你的網站逛幾頁，回到「名單」就會看到一個匿名訪客。
+3. 在「採集設定」選擇範圍並儲存。既有網站與省略設定的 API 呼叫維持舊版行為；新部署建議使用「最少採集設定」，並接上下面的同意回呼。
+4. 先用安裝測試回執確認來源與事件；移除測試碼後，正式瀏覽才會進入名單。
 
 想先看有資料的樣子，可以在**空的**資料庫裡建立範例帳號、網站和訪客（密碼會印在畫面上）：
 
@@ -147,40 +143,46 @@ docker compose exec lite-cdp lite-cdp reset-password <帳號>
 
 ## 追蹤程式碼
 
-裝好之後會自動記錄每一頁的瀏覽、點了哪些連結和按鈕、頁面捲到多深。除此之外有兩件事要自己告訴它。
-
-**訪客是誰。** 在訪客登入、註冊或留下 email 的時候：
-
-```html
-<script>
-  window.cdpq = window.cdpq || [];
-  cdpq.push(["identify", { email: "amy@example.com", name: "Amy", plan: "pro" }]);
-</script>
-```
-
-`email`、`name`、`account` 以外的欄位會存成自訂屬性。登出時呼叫 `cdp.reset()`，之後的紀錄就不會再算在這個人身上。
-
-**特別想記的動作。** 例如加入購物車、送出表單：
+安裝一次 loader。設定載入完成後再接上你的 CMP 和登入系統；**同意決策由網站保存，並在每次載入時重新提供**。
 
 ```js
-cdp.track("add_to_cart", { sku: "A-1001", price: 1280 });
+function send(command, ...args) {
+  (window.cdpq = window.cdpq || []).push([command, ...args]);
+}
+
+// 接在網站自己的 CMP 更新回呼；required consent 期間不建立 ID 或緩存事件。
+function onAnalyticsConsent(granted) {
+  send("ready", tracker => tracker.consent(granted));
+}
+
+// 同意後、登入成功時呼叫；user.id 必須是本站穩定會員 ID。
+function onLogin(user) {
+  send("ready", tracker => tracker.identify({
+    user_id: String(user.id), email: user.email, name: user.name, plan: user.plan
+  }));
+}
+
+function onLogout() {
+  send("ready", tracker => tracker.reset());
+}
+
+// 只在實際動作發生時呼叫，不能放在每次 render 的函式裡。
+send("track", "add_to_cart", { sku: "A-1001", price: 1280 });
 ```
 
-不想寫程式的話，在按鈕上加 `data-cdp-click="add_to_cart"` 也可以。事件名稱可以拿來建標籤。
+`user_id` 是明確主張的身分，不是訪客驗證；可啟用伺服器 HMAC 簽署會員 ID。舊的 `identify({ email })` 仍可使用，但不會把不同 `user_id` 的人物合併。`name`、`account` 是基本欄位，其他平面欄位依 traits 白名單採集。詳細的資料界線、登出、跨分頁行為、簽署方法與所有框架範例見 [追蹤契約](docs/tracking.md)。
 
-`cdpq.push([...])` 的寫法在追蹤程式碼還沒載入時也能用；載入之後也可以直接呼叫 `cdp.identify()`、`cdp.track()`、`cdp.page()`、`cdp.reset()`。
-
-可以加在 `<script>` 上的選項：
-
-| 屬性 | 說明 |
+| script 屬性 | 說明 |
 |---|---|
-| `data-key` | 追蹤金鑰，必填 |
-| `data-respect-dnt="true"` | 瀏覽器開了「不要追蹤」的訪客就不記錄 |
-| `data-auto-click="false"` | 不要自動記錄點了哪些連結和按鈕 |
-| `data-auto-scroll="false"` | 不要自動記錄頁面捲到多深 |
-| `data-endpoint="https://…/collect"` | 資料改送到別的網址（例如經過自己的反向代理）|
+| `data-key` | 必填，公開的網站追蹤金鑰 |
+| `data-respect-dnt="true"` | 額外限制：尊重瀏覽器 DNT |
+| `data-auto-page="false"` | 停用初始與自動 route pageview；可手動 `page()` |
+| `data-auto-click="false"`、`data-auto-scroll="false"` | 額外停用自動點擊／捲動 |
+| `data-spa-mode="history\|hash\|manual"` | 選擇 router 生命週期；手動模式勿再同時使用自動 route |
+| `data-endpoint="https://…/collect"` | 自訂 collector；公開設定仍從 script 的 origin 讀取 |
+| `data-test-token="…"` | 安裝回執模式；過期或錯站會拒收，不會轉成正式資料 |
 
-不想被記錄的區塊加 `data-cdp-ignore`，裡面的點擊就不會送出來。
+`data-cdp-ignore` 排除區塊點擊，`data-cdp-click="add_to_cart"` 命名點擊。關閉點擊文字時伺服器將名稱統一為 `click`。手動事件 `props` 由網站提供，URL 清理不會遞迴遮罩 props 中的文字。可用 `cdp.status()` 或 `cdp:diagnostic` 事件查看重複安裝、衝突、過期身分順序、傳輸失敗與丟棄數。新版追蹤器以跨分頁序列保護登入順序；舊版沒有 mutation metadata 的 identify-only 呼叫仍按抵達順序處理，詳見追蹤契約。
 
 ### 放到網路上
 
@@ -195,10 +197,11 @@ cdp.track("add_to_cart", { sku: "A-1001", price: 1280 });
 Lite CDP 存的是個人資料，請照你所在地的法規告知訪客並取得同意。它自己做了這幾件事：
 
 - **不存 IP。** IP 只在記憶體裡用來限制流量。
-- **不用 cookie。** 訪客的匿名編號放在他瀏覽器的 `localStorage`，只在你的網站上有效，不會跨站。
-- **可以設定保留期限。** `CDP_RETENTION_DAYS=365` 會每天刪掉一年以前的事件；預設不刪。
+- **不以 cookie 或指紋認人。** 追蹤器以 crypto 隨機編號存於 first-party `localStorage`，再依 site ID 隔離。不同 origin（含子網域）、裝置、無痕或清除儲存後都不會自動相認。登入相同 `user_id` 才能在同一 CDP 網站下連起來。管理台登入另外使用 HttpOnly cookie。
+- **可以設定保留期限。** `CDP_RETENTION_DAYS=365` 每 6 小時清理一年以前的事件；預設不刪。
 - **可以刪掉一個人。** 管理員在那個人的頁面按刪除，他的資料、事件和標籤會一起刪掉。
-- **可以尊重「不要追蹤」。** 加上 `data-respect-dnt="true"`。
+- **同意與 DNT。** 每站可要求同意、尊重 DNT；同意撤回會丟棄佇列與識別碼並通知同 origin 的已開分頁。已收到的歷史資料另以刪除人物功能處理。
+- **按站縮減資料。** query 可移除或保留白名單，referrer 可只收 origin，traits 可明確列允許欄位。
 - 認得出來的爬蟲不會被記錄。
 
 ## 設定
@@ -235,7 +238,7 @@ Lite CDP 存的是個人資料，請照你所在地的法規告知訪客並取�
 # 後端：http://127.0.0.1:8585
 cd src/api && ACCESS_PUBLIC_URL=http://127.0.0.1:5173 cargo run
 
-# 前端：http://127.0.0.1:5173，/api、/collect 和 /t.js 會轉給後端
+# 前端：http://127.0.0.1:5173，/api、/collect、/tracker-config 和 /t.js 會轉給後端
 cd src/web && pnpm install && pnpm dev --host 127.0.0.1 --port 5173 --strictPort
 ```
 

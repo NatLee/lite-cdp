@@ -149,10 +149,10 @@ impl Rules {
     pub fn push_where(&self, qb: &mut QueryBuilder<'_, Sqlite>, kind: &str, now: DateTime<Utc>) {
         match kind {
             "member" => {
-                qb.push(" AND p.email != ''");
+                qb.push(" AND (p.email != '' OR p.user_id != '')");
             }
             "anonymous" => {
-                qb.push(" AND p.email = ''");
+                qb.push(" AND (p.email = '' AND p.user_id = '')");
             }
             _ => {}
         }

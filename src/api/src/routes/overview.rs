@@ -72,6 +72,7 @@ struct LabelCount {
 #[derive(Serialize, sqlx::FromRow)]
 struct RecentPerson {
     id: i64,
+    user_id: String,
     email: String,
     name: String,
     identified_at: Option<String>,
@@ -143,7 +144,7 @@ pub async fn overview(
     let offset = Duration::minutes(query.tz_offset.unwrap_or(0).clamp(-840, 840));
 
     let (people, identified): (i64, i64) = sqlx::query_as(
-        "SELECT COUNT(*), COALESCE(SUM(email != ''), 0) FROM people WHERE site_id = ?",
+        "SELECT COUNT(*), COALESCE(SUM(email != '' OR user_id != ''), 0) FROM people WHERE site_id = ?",
     )
     .bind(site_id)
     .fetch_one(&state.db)
@@ -213,8 +214,8 @@ pub async fn overview(
     .await?;
 
     let recent_identified: Vec<RecentPerson> = sqlx::query_as(
-        "SELECT id, email, name, identified_at FROM people
-         WHERE site_id = ? AND email != '' ORDER BY identified_at DESC, id DESC LIMIT 6",
+        "SELECT id, email, user_id, name, identified_at FROM people
+         WHERE site_id = ? AND (email != '' OR user_id != '') ORDER BY identified_at DESC, id DESC LIMIT 6",
     )
     .bind(site_id)
     .fetch_all(&state.db)
@@ -222,7 +223,7 @@ pub async fn overview(
 
     let mut engagement = Vec::new();
     for activity in [Activity::Recent, Activity::Cooling, Activity::Dormant] {
-        let mut qb = QueryBuilder::new("SELECT COALESCE(SUM(p.email != ''), 0), COALESCE(SUM(p.email = ''), 0) FROM people p WHERE p.site_id = ");
+        let mut qb = QueryBuilder::new("SELECT COALESCE(SUM((p.email != '' OR p.user_id != '')), 0), COALESCE(SUM((p.email = '' AND p.user_id = '')), 0) FROM people p WHERE p.site_id = ");
         qb.push_bind(site_id);
         activity.push(&mut qb, now);
         let (member, anonymous): (i64, i64) = qb.build_query_as().fetch_one(&state.db).await?;

@@ -195,6 +195,8 @@ mod tests {
 
     fn pageview(path: &str, title: &str) -> Event {
         Event {
+            event_id: String::new(),
+            happened_at: None,
             kind: "pageview",
             name: String::new(),
             url: format!("https://www.example.com{path}?ref=mail"),
@@ -208,6 +210,8 @@ mod tests {
 
     fn custom(name: &str) -> Event {
         Event {
+            event_id: String::new(),
+            happened_at: None,
             kind: "custom",
             name: name.into(),
             ..pageview("/cart", "")
@@ -224,6 +228,8 @@ mod tests {
         assert!(rule("path_prefix", "/").matches(&pageview("/anything", "")));
         // 同一頁的點擊不算
         let click = Event {
+            event_id: String::new(),
+            happened_at: None,
             kind: "click",
             name: "了解更多".into(),
             ..pageview("/blog", "")

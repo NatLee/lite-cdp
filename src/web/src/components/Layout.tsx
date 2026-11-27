@@ -90,7 +90,7 @@ function Brand() {
           Lite CDP
         </span>
         <span className="block text-[11px] text-zinc-500 dark:text-zinc-400">
-          JOURNEY OBSERVATORY
+          SIGNAL CONSOLE
         </span>
       </span>
     </Link>
@@ -284,7 +284,7 @@ export function Layout() {
         <div className="atlas-masthead">
           <Brand />
           <span className="atlas-motto">
-            Every visit is part of a bigger story.
+            Know the signal. Understand the person.
           </span>
           <div className="hidden lg:block">
             <SidebarFooter theme={theme} onThemeChange={setTheme} />

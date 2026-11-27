@@ -1,1 +1,36 @@
-<svg font-weight="400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 650" role="img" aria-labelledby="title desc"><title id="title">Lite CDP — Journey Observatory</title><desc id="desc">A route instrument with page, action and identity lanes. Schematic cover illustration, not observed customer data or a conversion funnel.</desc><defs><pattern id="grid" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".8" fill="#426386" opacity=".5"/></pattern></defs><rect width="1440" height="650" fill="#0b2038"/><rect width="1440" height="650" fill="url(#grid)"/><path d="M74 101h1292M74 556h1292" stroke="#30516b"/><text x="80" y="70" font-family="monospace" font-size="13" letter-spacing="3" fill="#6ca7e6">JOURNEY OBSERVATORY / CUSTOMER DATA PLATFORM</text><text x="78" y="255" font-family="sans-serif" font-size="72" font-weight="600" letter-spacing="-5" fill="#eff8ff">Lite CDP</text><text x="83" y="325" font-family="Georgia,serif" font-style="italic" font-size="30" fill="#a2bfdf">Every visit tells a story.</text><text x="83" y="395" font-family="monospace" font-size="12" letter-spacing="2" fill="#70a1d6">OBSERVE THE ROUTE.</text><text x="83" y="423" font-family="monospace" font-size="12" letter-spacing="2" fill="#70a1d6">UNDERSTAND THE PERSON.</text><g transform="translate(660 148)"><rect width="690" height="365" fill="#0e2a46" stroke="#345375"/><text x="25" y="34" font-family="monospace" font-size="9" letter-spacing="2" fill="#6c9bce">SESSION / EVENT SEQUENCE</text><path d="M90 92h575M90 180h575M90 268h575" stroke="#335375" stroke-dasharray="3 7"/><g font-family="monospace" font-size="8" fill="#7195bb"><text x="20" y="95">PAGE</text><text x="20" y="183">ACTION</text><text x="20" y="271">IDENTITY</text></g><path d="m125 92 100 88 100-88 100 88 100 88 100-176" stroke="#75ade9" stroke-width="2" fill="none"/><g fill="#0e2a46" stroke="#68a5e7"><circle cx="125" cy="92" r="13"/><circle cx="225" cy="180" r="13"/><circle cx="325" cy="92" r="13"/><circle cx="425" cy="180" r="13"/><circle cx="525" cy="268" r="13"/></g><circle cx="625" cy="92" r="20" fill="#68a5e7" fill-opacity=".1" stroke="#68a5e7"/><circle cx="625" cy="92" r="13" fill="#a4c9f0"/><g font-family="monospace" font-size="8" fill="#a8c8eb" text-anchor="middle"><text x="125" y="95">01</text><text x="225" y="183">02</text><text x="325" y="95">03</text><text x="425" y="183">04</text><text x="525" y="271">05</text><text x="625" y="95" fill="#173555">06</text></g><path d="M25 319h640" stroke="#345375"/><text x="25" y="343" font-family="monospace" font-size="9" letter-spacing="1" fill="#6c9bce">PAGEVIEWS · INTERACTIONS · RECORDED IDENTITY</text></g><text x="80" y="603" font-family="monospace" font-size="12" letter-spacing="2" fill="#70a1d6">REAL EVENTS. CLEAR CONTEXT. YOUR DATA.</text><text x="1110" y="603" font-family="monospace" font-size="12" letter-spacing="2" fill="#70a1d6">RUST · REACT · SQLITE</text></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 720" role="img" aria-labelledby="title desc">
+<title id="title">Lite CDP — Know the signal. Understand the person.</title>
+<desc id="desc">Editable schematic. Two independent anonymous browser event streams join only after both explicitly identify the same site-scoped member ID. No fingerprint matching; not actual customer data.</desc>
+<rect width="1440" height="720" fill="#f4f5ef"/>
+<rect x="592" width="848" height="720" fill="#101211"/>
+<rect x="592" width="8" height="720" fill="#c7e45b"/>
+<g font-family="Arial,sans-serif" fill="#101211">
+<text x="64" y="72" font-family="monospace" font-size="13" letter-spacing="3">FIRST-PARTY CUSTOMER DATA</text>
+<path d="M64 108H528" stroke="#aab39b"/>
+<text x="56" y="242" font-size="108" font-weight="600" letter-spacing="-8">Lite CDP</text>
+<text x="64" y="330" font-size="46" font-weight="600" letter-spacing="-2">Know the signal.</text>
+<text x="64" y="392" font-size="46" font-weight="600" letter-spacing="-2">Understand</text>
+<text x="64" y="448" font-size="46" font-weight="600" letter-spacing="-2">the person.</text>
+<text x="66" y="510" font-family="monospace" font-size="12" letter-spacing="2" fill="#596d00">EXPLICIT IDENTITY. VISIBLE RULES.</text>
+<rect x="64" y="574" width="464" height="80" fill="#c7e45b"/>
+<text x="88" y="607" font-family="monospace" font-size="12" letter-spacing="2">SIGNAL CONSOLE / 02</text>
+<text x="88" y="634" font-size="16">Collect only what you choose.</text>
+</g>
+<g font-family="monospace">
+<text x="648" y="72" fill="#c7e45b" font-size="13" letter-spacing="3">TWO BROWSERS. ONE EXPLICIT IDENTITY.</text>
+<text x="648" y="120" fill="#b4bba8" font-size="11" letter-spacing="1">SITE / SHOP.EXAMPLE</text>
+<g fill="#d9ddcf" font-size="12"><text x="648" y="188">BROWSER A</text><text x="648" y="383">BROWSER B</text></g>
+<g stroke="#b4bba8" stroke-width="2" fill="none"><path d="M654 224H1030L1148 321"/><path d="M654 420H1030L1148 321"/></g>
+<g fill="#101211" stroke="#f4f5ef" stroke-width="2"><rect x="650" y="216" width="16" height="16"/><rect x="810" y="216" width="16" height="16"/><rect x="974" y="216" width="16" height="16"/><rect x="650" y="412" width="16" height="16"/><rect x="810" y="412" width="16" height="16"/><rect x="974" y="412" width="16" height="16"/></g>
+<g fill="#b4bba8" font-size="11"><text x="648" y="258">/pricing</text><text x="810" y="258">click</text><text x="974" y="258">identify</text><text x="648" y="455">/welcome</text><text x="810" y="455">signup</text><text x="974" y="455">identify</text></g>
+<g fill="#f4f5ef" font-size="12"><text x="648" y="292">anon_a71…</text><text x="648" y="488">anon_b92…</text></g>
+<path d="M1148 321H1352" stroke="#c7e45b" stroke-width="4"/>
+<rect x="1098" y="298" width="248" height="48" fill="#c7e45b"/>
+<text x="1222" y="328" fill="#101211" font-size="15" text-anchor="middle">user_id: member-42</text>
+<text x="1098" y="386" fill="#c7e45b" font-size="11">MATCH BY DECLARED ID</text>
+<text x="1098" y="408" fill="#b4bba8" font-size="11">NOT BY FINGERPRINT</text>
+<path d="M648 546H1376" stroke="#556049"/>
+<g fill="#f4f5ef" font-size="28"><text x="648" y="602">02</text><text x="874" y="602">01</text><text x="1100" y="602">00</text></g>
+<g fill="#b4bba8" font-size="11" letter-spacing="1"><text x="648" y="630">BROWSER IDS</text><text x="874" y="630">KNOWN PERSON</text><text x="1100" y="630">GUESSED MATCHES</text></g>
+<text x="648" y="686" fill="#b4bba8" font-size="10" letter-spacing="1">SCHEMATIC / NOT CUSTOMER DATA</text><text x="1180" y="686" fill="#c7e45b" font-size="10">RUST · REACT · SQLITE</text>
+</g></svg>
