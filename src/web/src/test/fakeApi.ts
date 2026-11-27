@@ -26,7 +26,7 @@ export function fakeApi(routes: Record<string, Handler>) {
       if (!handler) {
         return new Response(JSON.stringify({ error: `no fake for ${method} ${path}` }), { status: 404 });
       }
-      const result = handler(body, url);
+      const result = await handler(body, url);
       if (result === undefined) return new Response(null, { status: 204 });
       return new Response(JSON.stringify(result), { status: 200, headers: { "content-type": "application/json" } });
     }),

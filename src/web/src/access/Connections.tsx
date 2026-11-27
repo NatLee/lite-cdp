@@ -43,6 +43,9 @@ function Secret({ token, onClose }: { token: string; onClose: () => void }) {
 export function Connections({ isAdmin }: { isAdmin: boolean }) {
   const generation = useRef(0);
   const auditGeneration = useRef(0);
+  const appliedPage = useRef<{ generation: number; query: string; cursor: string | null } | null>(null);
+  const paging = useRef(false);
+  const [auditLoading, setAuditLoading] = useState(false);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [providers, setProviders] = useState<Provider[]>([]);
   const [usage, setUsage] = useState<Usage | null>(null);
@@ -86,12 +89,19 @@ export function Connections({ isAdmin }: { isAdmin: boolean }) {
   }, [isAdmin]);
   const loadAudit = useCallback(async () => {
     const request = ++auditGeneration.current;
+    const eventQuery = query(true);
+    appliedPage.current = null; setNextCursor(null); setAuditLoading(true);
     setError("");
-    const [u, e] = await Promise.all([
-      accessRequest<Usage>(`/usage?${query()}`), accessRequest<{ items: AuditEvent[]; next_cursor: string | null }>(`/events?${query(true)}`),
-    ]);
-    if (request !== auditGeneration.current) return;
-    setUsage(u); setEvents(e.items); setNextCursor(e.next_cursor);
+    try {
+      const [u, e] = await Promise.all([
+        accessRequest<Usage>(`/usage?${query()}`), accessRequest<{ items: AuditEvent[]; next_cursor: string | null }>(`/events?${eventQuery}`),
+      ]);
+      if (request !== auditGeneration.current) return;
+      appliedPage.current = { generation: request, query: eventQuery, cursor: e.next_cursor };
+      setUsage(u); setEvents(e.items); setNextCursor(e.next_cursor);
+    } finally {
+      if (request === auditGeneration.current) setAuditLoading(false);
+    }
   }, [query]);
   useEffect(() => { let current = true; load().catch(e => { if (current) setError(e.message); }); return () => { current = false; generation.current += 1; }; }, [load]);
   useEffect(() => { let current = true; loadAudit().catch(e => { if (current) setError(e.message); }); return () => { current = false; auditGeneration.current += 1; }; }, [loadAudit]);
@@ -114,13 +124,22 @@ export function Connections({ isAdmin }: { isAdmin: boolean }) {
     const flow = await accessRequest<{ authorization_url: string }>(`/identities/${provider.provider}/link`, "POST", {});
     window.location.assign(flow.authorization_url);
   }, false);
-  const more = () => perform(async () => {
-    if (!nextCursor) return;
-    const request = auditGeneration.current;
-    const page = await accessRequest<{ items: AuditEvent[]; next_cursor: string | null }>(`/events?${query(true, nextCursor)}`);
-    if (request !== auditGeneration.current) return;
-    setEvents(items => [...items, ...page.items]); setNextCursor(page.next_cursor);
-  }, false);
+  const more = () => {
+    const applied = appliedPage.current;
+    if (!applied?.cursor || auditLoading || paging.current || applied.query !== query(true) || applied.generation !== auditGeneration.current) return;
+    paging.current = true;
+    return perform(async () => {
+      try {
+        const params = new URLSearchParams(applied.query); params.set("cursor", applied.cursor!);
+        const page = await accessRequest<{ items: AuditEvent[]; next_cursor: string | null }>(`/events?${params}`);
+        if (appliedPage.current !== applied || applied.generation !== auditGeneration.current) return;
+        setEvents(items => [...new Map([...items, ...page.items].map(item => [item.id, item])).values()]);
+        appliedPage.current = { ...applied, cursor: page.next_cursor }; setNextCursor(page.next_cursor);
+      } catch (e) {
+        if (appliedPage.current === applied && applied.generation === auditGeneration.current) throw e;
+      } finally { paging.current = false; }
+    }, false);
+  };
   const register = () => perform(async () => {
     const client = await accessRequest<Client>("/clients", "POST", { client_name: clientName.trim(), redirect_uris: redirects.split("\n").map(v => v.trim()).filter(Boolean), token_endpoint_auth_method: "none", grant_types: ["authorization_code", "refresh_token"], response_types: ["code"] });
     setNotice(`已註冊 ${client.client_name} · ${client.client_id}`); setClientName(""); setRedirects("");
@@ -151,10 +170,11 @@ export function Connections({ isAdmin }: { isAdmin: boolean }) {
       </div></section>
       <section className="access-section access-audit" aria-labelledby="access-usage"><header><p className="access-rubric">04 / 用量與稽核</p><h2 id="access-usage">從請求核對使用情況</h2><p>每次一般 API 操作或 MCP 工具執行算一次。協定探索、列工具與原有匯入不混入；日期與分日統計採 UTC。</p></header><div>
         <div className="access-filters"><label>範圍<select className="input" value={days} onChange={e => setDays(Number(e.target.value))}><option value={7}>最近 7 天</option><option value={30}>最近 30 天</option><option value={90}>最近 90 天</option></select></label><label>通道<select className="input" value={transport} onChange={e => setTransport(e.target.value)}><option value="">全部通道</option><option value="api">一般 API</option><option value="mcp">MCP 工具</option></select></label>{isAdmin && <div className="access-filters"><label>查看帳號<select className="input" value={auditMode} onChange={e => { setAuditMode(e.target.value); if (e.target.value !== "user") setAuditUser(e.target.value); }}><option value="self">僅本人</option><option value="all">所有帳號</option><option value="user">指定帳號</option></select></label>{auditMode === "user" && <><label>帳號 ID<input className="input" inputMode="numeric" value={userDraft} onChange={e => setUserDraft(e.target.value)} maxLength={18}/></label><button className="btn btn-secondary" type="button" disabled={!/^[1-9][0-9]{0,17}$/.test(userDraft)} onClick={() => setAuditUser(userDraft)}>查看此帳號</button></>}</div>}</div>
+        {auditLoading && <p role="status">正在更新稽核紀錄…</p>}
         {usage && <><p className="access-meta">{usage.from.slice(0, 10)} – {usage.to.slice(0, 10)}（不含迄日） · UTC</p><div className="access-totals"><strong>嘗試 {usage.totals.attempts}</strong><span>成功 {usage.totals.successes}</span><span>失敗 {usage.totals.failures}</span><span>待完成 {usage.totals.pending}</span></div>{usage.totals.attempts === 0 && <p className="access-empty">這段期間尚無工具執行，統計為 0。</p>}{!!usage.daily.length && <div className="access-table-scroll" tabIndex={0} role="region" aria-label="UTC 分日用量"><table><thead><tr><th>UTC 日期</th><th>嘗試</th><th>成功</th><th>失敗</th><th>待完成</th></tr></thead><tbody>{usage.daily.map(day => <tr key={day.date}><td>{day.date}</td><td>{day.attempts}</td><td>{day.successes}</td><td>{day.failures}</td><td>{day.pending}</td></tr>)}</tbody></table></div>}</>}
         <div className="access-log-heading"><h3>近期請求紀錄</h3><button className="btn btn-secondary" disabled={busy} onClick={() => void perform(async () => {}, "audit")}>更新稽核紀錄</button><label>結果<select className="input" value={outcome} onChange={e => setOutcome(e.target.value)}><option value="">全部結果</option><option value="pending">待完成</option><option value="success">成功</option><option value="failure">失敗</option><option value="interrupted">中斷</option></select></label></div>
         {!events.length ? <p className="access-empty">沒有符合條件的請求紀錄。</p> : <div className="access-table-scroll" tabIndex={0} role="region" aria-label="請求稽核紀錄"><table><thead><tr><th>時間（UTC）</th><th>通道 / 操作</th><th>結果 / 狀態</th><th>耗時</th><th>追蹤編號</th></tr></thead><tbody>{events.map(event => <tr key={event.id}><td>{date(event.at)}</td><td>{event.transport ?? event.kind}<br/>{event.operation}</td><td>{event.outcome} / {event.status ?? "待完成"}</td><td>{event.duration_ms === null ? "—" : `${event.duration_ms} ms`}</td><td className="access-wrap">{event.request_id}</td></tr>)}</tbody></table></div>}
-        {nextCursor && <button className="btn btn-secondary" disabled={busy} onClick={() => void more()}>載入更多紀錄</button>}
+        {nextCursor && <button className="btn btn-secondary" disabled={busy || auditLoading} onClick={() => void more()}>載入更多紀錄</button>}
       </div></section>
       {isAdmin && <section className="access-section" aria-labelledby="access-clients"><header><p className="access-rubric">ADMIN / 應用註冊</p><h2 id="access-clients">登記 OAuth 公開應用</h2><p>只支援 Authorization Code + PKCE。回呼網址必須精確符合登記值；不能用金鑰管理帳號或應用。</p></header><div><form className="access-form" onSubmit={e => { e.preventDefault(); void register(); }}><label className="label">應用名稱<input className="input" maxLength={80} required value={clientName} onChange={e => setClientName(e.target.value)}/></label><label className="label">回呼網址（每行一個）<textarea className="input" required value={redirects} onChange={e => setRedirects(e.target.value)} rows={3}/></label><button className="btn btn-primary" disabled={busy || !clientName.trim() || !redirects.trim()}>註冊 OAuth 應用</button></form><ul className="access-ledger">{clients.map(client => <li key={client.client_id}><div><h3>{client.client_name}</h3><p className="access-wrap">{client.client_id}</p>{client.redirect_uris.map(uri => <p className="access-wrap access-meta" key={uri}>{uri}</p>)}</div></li>)}</ul></div></section>}
     </>}

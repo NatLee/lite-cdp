@@ -123,3 +123,33 @@ test("personal event access is a separate explicit choice",async()=>{
  await userEvent.click(choice);await userEvent.type(screen.getByLabelText("金鑰名稱"),"個人事件工具");await userEvent.click(screen.getByRole("button",{name:"建立 API 金鑰"}));await screen.findByRole("dialog");
  expect(calls.find(c=>c.method==="POST"&&c.path==="/access/credentials")?.body).toMatchObject({scopes:["reports:read","people:read"]});
 });
+
+function deferred<T>() { let resolve!: (value:T)=>void; const promise=new Promise<T>(done=>{resolve=done;});return {promise,resolve}; }
+const auditRow=(id:string,operation:string)=>({id,request_id:id,at:"2026-11-27T00:00:00Z",kind:"operation",transport:"mcp",operation,user_id:1,client_id:null,credential_id:"key-1",status:200,outcome:"success",duration_ms:12});
+test("filter reload cannot mix the old cursor into the new query",async()=>{
+ const pending=deferred<unknown>();const calls=fakeApi({...routes(),"GET /access/events":(_body,url)=>url.searchParams.get("transport")==="mcp" ? pending.promise : {items:[auditRow("1","old_filter")],next_cursor:"100"}});
+ render(<Connections isAdmin={false}/>);await screen.findByRole("button",{name:"載入更多紀錄"});
+ await userEvent.selectOptions(screen.getByLabelText("通道"),"mcp");
+ const more=screen.queryByRole("button",{name:"載入更多紀錄"});expect(more===null||more.hasAttribute("disabled")).toBe(true);
+ pending.resolve({items:[auditRow("2","new_filter")],next_cursor:"200"});await screen.findByText("new_filter",{exact:false});
+ expect(calls.filter(c=>c.path==="/access/events")).toHaveLength(2);
+});
+test("late old pagination cannot replace the cursor of a freshly loaded filter",async()=>{
+ const oldPage=deferred<unknown>();const cursors:string[]=[];
+ fakeApi({...routes(),"GET /access/events":(_body,url)=>{
+  const cursor=url.searchParams.get("cursor");if(cursor)cursors.push(cursor);
+  if(cursor==="100")return oldPage.promise;
+  if(url.searchParams.get("transport")==="mcp")return {items:[auditRow("2","fresh_filter")],next_cursor:cursor?null:"200"};
+  return {items:[auditRow("1","old_filter")],next_cursor:"100"};
+ }});
+ render(<Connections isAdmin={false}/>);await userEvent.click(await screen.findByRole("button",{name:"載入更多紀錄"}));
+ await userEvent.selectOptions(screen.getByLabelText("通道"),"mcp");await screen.findByText("fresh_filter",{exact:false});
+ oldPage.resolve({items:[auditRow("9","stale_page")],next_cursor:"10"});
+ const more=await screen.findByRole("button",{name:"載入更多紀錄"});await userEvent.click(more);
+ expect(cursors).toEqual(["100","200"]);expect(screen.queryByText("stale_page",{exact:false})).not.toBeInTheDocument();
+});
+test("overlapping pages do not duplicate a recorded request",async()=>{
+ fakeApi({...routes(),"GET /access/events":(_body,url)=>url.searchParams.get("cursor")?{items:[auditRow("1","same_operation"),auditRow("2","new_operation")],next_cursor:null}:{items:[auditRow("1","same_operation")],next_cursor:"100"}});
+ render(<Connections isAdmin={false}/>);await userEvent.click(await screen.findByRole("button",{name:"載入更多紀錄"}));await screen.findByText("new_operation",{exact:false});
+ expect(screen.getAllByText("same_operation",{exact:false})).toHaveLength(1);
+});

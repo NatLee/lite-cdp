@@ -109,7 +109,16 @@ pub fn router(state: AppState) -> Router {
             header::REFERRER_POLICY,
             HeaderValue::from_static("same-origin"),
         ))
-        .layer(TraceLayer::new_for_http().make_span_with(|request:&axum::http::Request<axum::body::Body>|tracing::info_span!("http",method=%request.method(),path=request.uri().path())))
+        .layer(TraceLayer::new_for_http().make_span_with(
+            |request: &axum::http::Request<axum::body::Body>| {
+                let route = request
+                    .extensions()
+                    .get::<axum::extract::MatchedPath>()
+                    .map(|path| path.as_str())
+                    .unwrap_or("static");
+                tracing::info_span!("http",method=%request.method(),route)
+            },
+        ))
         .with_state(state)
 }
 
