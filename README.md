@@ -182,7 +182,7 @@ send("track", "add_to_cart", { sku: "A-1001", price: 1280 });
 | `data-endpoint="https://…/collect"` | 自訂 collector；公開設定仍從 script 的 origin 讀取 |
 | `data-test-token="…"` | 安裝回執模式；過期或錯站會拒收，不會轉成正式資料 |
 
-`data-cdp-ignore` 排除區塊點擊，`data-cdp-click="add_to_cart"` 命名點擊。關閉點擊文字時伺服器將名稱統一為 `click`。手動事件 `props` 由網站提供，URL 清理不會遞迴遮罩 props 中的文字。可用 `cdp.status()` 或 `cdp:diagnostic` 事件查看重複安裝、衝突、傳輸失敗與丟棄數。
+`data-cdp-ignore` 排除區塊點擊，`data-cdp-click="add_to_cart"` 命名點擊。關閉點擊文字時伺服器將名稱統一為 `click`。手動事件 `props` 由網站提供，URL 清理不會遞迴遮罩 props 中的文字。可用 `cdp.status()` 或 `cdp:diagnostic` 事件查看重複安裝、衝突、過期身分順序、傳輸失敗與丟棄數。新版追蹤器以跨分頁序列保護登入順序；舊版沒有 mutation metadata 的 identify-only 呼叫仍按抵達順序處理，詳見追蹤契約。
 
 ### 放到網路上
 

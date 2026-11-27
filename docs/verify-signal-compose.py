@@ -61,10 +61,26 @@ with tempfile.TemporaryDirectory(prefix=project) as tmp:
         call('POST','/collect',payload,204,True)
         receipt,_=call('GET',f'/api/sites/{sid}/installation-tests/'+token['token']);assert receipt['receipt']['analytics_written'] is False
         people,_=call('GET',f'/api/sites/{sid}/people');assert people['total']==1 and people['items'][0]['pageviews']==1
+        # Identity replay and first-delivery ordering are checked through the deployed collector.
+        def claim(user,event,revision=None):
+            who={'user_id':user}
+            if revision is not None:who.update(revision=revision,mutation_id='compose-mutation-'+user)
+            return {'key':key,'anon_id':'compose-identity','consent':True,'identify':who,'events':[{'type':'custom','name':user,'event_id':event}]}
+        first=claim('A','compose-identity-A');second=claim('B','compose-identity-B')
+        call('POST','/collect',first,204,True);call('POST','/collect',second,204,True);call('POST','/collect',first,204,True)
+        ordered=claim('C','compose-identity-C',200);call('POST','/collect',ordered,204,True)
+        _,headers=call('POST','/collect',claim('D','compose-identity-D',100),204,True);assert headers['X-CDP-Identity']=='stale'
+        cursor={'key':key,'anon_id':'compose-identity','consent':True,'identity_context':{'mutation_id':'compose-mutation-C','revision':200},'events':[{'type':'custom','name':'after-latest','event_id':'compose-after-latest'}]}
+        call('POST','/collect',cursor,204,True)
+        members,_=call('GET',f'/api/sites/{sid}/people?kind=member')
+        latest=next(person for person in members['items'] if person['user_id']=='C')
+        latest_events,_=call('GET',f"/api/sites/{sid}/people/{latest['id']}/events")
+        assert any(event['name']=='after-latest' for event in latest_events['items'])
+        assert not any(person['user_id']=='D' for person in members['items'])
         backend=compose('ps','-q','lite-cdp').stdout.strip()
         inspect=json.loads(subprocess.run(['docker','inspect',backend],capture_output=True,text=True,check=True).stdout)[0]
         assert inspect['Config']['User']=='app' and not any(inspect['NetworkSettings']['Ports'].values())
-        result={'status':'passed','checks':['built nginx static and API','public config CORS/no-store/no-secret','real tracker route','required consent enforcement','event replay deduplication','URL sanitization','isolated installation receipt','nonroot backend with no published port'],'disposable_project':True}
+        result={'status':'passed','checks':['built nginx static and API','public config CORS/no-store/no-secret','real tracker route','required consent enforcement','event replay deduplication','URL sanitization','isolated installation receipt','legacy identity replay guard','ordered stale identity guard','acknowledged identity cursor','nonroot backend with no published port'],'disposable_project':True}
         (ROOT/'docs/signal-console-compose.json').write_text(json.dumps(result,indent=2)+'\n');print(json.dumps(result,indent=2))
     finally:
         compose('down','--volumes','--remove-orphans')

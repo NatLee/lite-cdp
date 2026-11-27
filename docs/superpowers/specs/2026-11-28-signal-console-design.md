@@ -22,3 +22,9 @@ Signal Console uses graphite #101211, chalk #F4F5EF and olive #596D00 / #C7E45B.
 ## Verification
 
 Regression tests cover legacy API behavior, stable-ID isolation/same-ID merge, email conflicts, policy enforcement, timestamp/idempotency, test receipt isolation/access/expiry, tracker consent/revoke/DNT/duplicate/conflicting load/storage/retry/SPA. Frontend tests cover policy persistence, templates and simulator. Run complete Rust/frontend tests, formatting/build, real Chrome tracking and theme/mobile flows, then capture evidence. Limit Cargo jobs to 2, debug info to 0, Vitest workers to 2. No paid inference, outbound messaging, push, PR or archive in this workstream.
+
+## Review amendment: ordered identity and initialization
+
+Identity mutations carry paired mutation_id/revision metadata, allocated across tabs through Web Locks or an IndexedDB transaction and retained across document reloads. The server persists a per-device high-water mark independently from business-event retention. Duplicate claims skip profile mutation; stale envelopes do not rebind or write events. Acknowledged later batches carry an identity_context reference, avoiding repeated or expired signature submission. Legacy unversioned identify-only calls preserve arrival order only on devices not yet using ordered identity; event-backed legacy replays are guarded before any identity change.
+
+Commands arriving after the loader executes but before configuration resolves use the same bounded memory initialization queue as pre-loader commands. The resolved consent/DNT gate decides whether to execute or discard them. Revocation clears deferred work; safe identity-ordering failure is explicit rather than silently racing a counter.

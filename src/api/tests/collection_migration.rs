@@ -25,6 +25,17 @@ async fn existing_email_identity_and_events_survive_additive_policy_upgrade() {
         .execute(&pool)
         .await
         .unwrap();
+    sqlx::raw_sql(include_str!("../migrations/0006_identity_order.sql"))
+        .execute(&pool)
+        .await
+        .unwrap();
+    let ordering: (i64, String, i64) = sqlx::query_as(
+        "SELECT identity_revision,identity_mutation_id,identity_at_ms FROM devices WHERE id=1",
+    )
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(ordering, (0, String::new(), 0));
     let old: (String, String, i64) =
         sqlx::query_as("SELECT email,user_id,pageviews FROM people WHERE id=1")
             .fetch_one(&pool)

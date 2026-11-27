@@ -425,6 +425,7 @@ async fn replay(
                 events.push(event(site, "custom", site.identify_event, page, ""));
             }
             let batch = Batch {
+                identity_context: None,
                 anon_id: visitor.anon_id.clone(),
                 session_id: session_id.clone(),
                 events,
@@ -515,6 +516,8 @@ async fn seed_site(
                 traits.insert((*key).to_owned(), Value::from(*rng.pick(values)));
             }
             Some(Identify {
+                mutation_id: String::new(),
+                revision: None,
                 user_id: String::new(),
                 verified: false,
                 email,

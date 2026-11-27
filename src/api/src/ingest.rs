@@ -26,6 +26,18 @@ pub struct Payload {
     pub identify: Option<RawIdentify>,
     pub consent: Option<bool>,
     pub test_token: Option<String>,
+    pub identity_context: Option<IdentityCursor>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct IdentityCursor {
+    pub mutation_id: String,
+    pub revision: i64,
+}
+impl IdentityCursor {
+    fn valid(&self) -> bool {
+        valid_id(&self.mutation_id, 8) && (1..=9_007_199_254_740_991).contains(&self.revision)
+    }
 }
 
 #[derive(Deserialize)]
@@ -43,6 +55,8 @@ pub struct RawEvent {
 
 #[derive(Deserialize)]
 pub struct RawIdentify {
+    pub mutation_id: Option<String>,
+    pub revision: Option<i64>,
     pub user_id: Option<String>,
     pub proof: Option<IdentityProof>,
     pub email: Option<String>,
@@ -75,6 +89,8 @@ pub struct Event {
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Identify {
+    pub mutation_id: String,
+    pub revision: Option<i64>,
     pub user_id: String,
     pub verified: bool,
     /// 小寫；空字串是沒帶 email
@@ -90,6 +106,7 @@ pub struct Batch {
     pub session_id: String,
     pub events: Vec<Event>,
     pub identify: Option<Identify>,
+    pub identity_context: Option<IdentityCursor>,
 }
 
 /// 最多留 `max` 個字元。
@@ -262,7 +279,18 @@ impl RawIdentify {
         if user_id.len() > 128 || user_id.contains(char::is_control) {
             return Err("user_id 最多 128 bytes，不能包含控制字元".into());
         }
+        let mutation_id = self.mutation_id.unwrap_or_default();
+        if self.revision.is_some() != !mutation_id.is_empty()
+            || (!mutation_id.is_empty() && !valid_id(&mutation_id, 8))
+            || self
+                .revision
+                .is_some_and(|revision| !(1..=9_007_199_254_740_991).contains(&revision))
+        {
+            return Err("identify.mutation_id 與 revision 必須成對；ID 為 8–64 英數字，revision 為正的安全整數".into());
+        }
         Ok(Identify {
+            mutation_id,
+            revision: self.revision,
             user_id,
             verified: false,
             email,
@@ -294,7 +322,19 @@ impl Payload {
         if events.is_empty() && identify.is_none() {
             return Err("沒有事件，也沒有 identify".into());
         }
+        if self
+            .identity_context
+            .as_ref()
+            .is_some_and(|cursor| !cursor.valid())
+            || (self.identity_context.is_some() && identify.is_some())
+        {
+            return Err(
+                "identity_context 必須是有效的 mutation_id/revision，且不能與 identify 同時提供"
+                    .into(),
+            );
+        }
         Ok(Batch {
+            identity_context: self.identity_context,
             anon_id: self.anon_id,
             session_id,
             events,
@@ -360,6 +400,7 @@ pub fn describe_user_agent(ua: &str) -> (&'static str, &'static str) {
 pub struct Stored {
     pub person_id: i64,
     pub events: usize,
+    pub identity_status: Option<&'static str>,
 }
 
 struct Person {
@@ -591,6 +632,13 @@ pub async fn store_in(
     .bind(&batch.anon_id)
     .fetch_optional(&mut **tx)
     .await?;
+    if device.is_none() && batch.identity_context.is_some() {
+        return Ok(Stored {
+            person_id: 0,
+            events: 0,
+            identity_status: Some("stale"),
+        });
+    }
     let (device_id, person) = match device {
         Some((device_id, id, email, user_id)) => {
             sqlx::query("UPDATE devices SET last_seen = ?, user_agent = ? WHERE id = ?")
@@ -630,30 +678,116 @@ pub async fn store_in(
         session_id: &batch.session_id,
         now,
     };
+    let mut identity_status = None;
+    if let Some(cursor) = &batch.identity_context {
+        let (revision, mutation): (i64, String) =
+            sqlx::query_as("SELECT identity_revision,identity_mutation_id FROM devices WHERE id=?")
+                .bind(device_id)
+                .fetch_one(&mut **tx)
+                .await?;
+        if revision != cursor.revision || mutation != cursor.mutation_id {
+            return Ok(Stored {
+                person_id,
+                events: 0,
+                identity_status: Some("stale"),
+            });
+        }
+        identity_status = Some("current");
+    }
     if let Some(identify) = &batch.identify {
-        let (id, newly) = apply_identify(tx, site_id, device_id, person, identify, now).await?;
-        person_id = id;
-        at.person_id = id;
-        // 網站通常每一頁都會呼叫 identify；只有第一次認出來時記一筆
-        if newly {
-            let page = batch.events.first();
-            let event = Event {
-                event_id: String::new(),
-                happened_at: None,
-                kind: "identify",
-                name: if identify.user_id.is_empty() {
-                    identify.email.clone()
-                } else {
-                    identify.user_id.clone()
-                },
-                url: page.map(|e| e.url.clone()).unwrap_or_default(),
-                path: page.map(|e| e.path.clone()).unwrap_or_default(),
-                title: page.map(|e| e.title.clone()).unwrap_or_default(),
-                referrer: String::new(),
-                referrer_host: String::new(),
-                props: "{}".into(),
-            };
-            insert_event(tx, &at, &event).await?;
+        let (revision, mutation_id, at_ms): (i64, String, i64) = sqlx::query_as(
+            "SELECT identity_revision,identity_mutation_id,identity_at_ms FROM devices WHERE id=?",
+        )
+        .bind(device_id)
+        .fetch_one(&mut **tx)
+        .await?;
+        let event_time = batch
+            .events
+            .iter()
+            .filter_map(|event| event.happened_at.as_ref())
+            .filter_map(|time| chrono::DateTime::parse_from_rfc3339(time).ok())
+            .map(|time| time.timestamp_millis())
+            .max()
+            .unwrap_or(0);
+        let apply = if let Some(incoming) = identify.revision {
+            if incoming < revision || (incoming == revision && identify.mutation_id != mutation_id)
+            {
+                // Never attribute a late old-account envelope to the newer account.
+                return Ok(Stored {
+                    person_id,
+                    events: 0,
+                    identity_status: Some("stale"),
+                });
+            }
+            if incoming == revision {
+                identity_status = Some("replayed");
+                false
+            } else {
+                true
+            }
+        } else {
+            if revision > 0 || (event_time > 0 && event_time < at_ms) {
+                return Ok(Stored {
+                    person_id,
+                    events: 0,
+                    identity_status: Some("stale"),
+                });
+            }
+            // Event-keyed legacy retries must not mutate identity before business-event dedup.
+            let mut all_replayed = !batch.events.is_empty();
+            for event in &batch.events {
+                if event.event_id.is_empty()
+                    || !sqlx::query_scalar::<_, bool>(
+                        "SELECT EXISTS(SELECT 1 FROM events WHERE site_id=? AND event_id=?)",
+                    )
+                    .bind(site_id)
+                    .bind(&event.event_id)
+                    .fetch_one(&mut **tx)
+                    .await?
+                {
+                    all_replayed = false;
+                    break;
+                }
+            }
+            if all_replayed {
+                identity_status = Some("replayed");
+                false
+            } else {
+                true
+            }
+        };
+        if apply {
+            let (id, newly) = apply_identify(tx, site_id, device_id, person, identify, now).await?;
+            sqlx::query("UPDATE devices SET identity_revision=?,identity_mutation_id=?,identity_at_ms=max(identity_at_ms,?) WHERE id=?")
+            .bind(identify.revision.unwrap_or(0)).bind(&identify.mutation_id).bind(event_time).bind(device_id).execute(&mut **tx).await?;
+            identity_status = Some("applied");
+            person_id = id;
+            at.person_id = id;
+            // 網站通常每一頁都會呼叫 identify；只有第一次認出來時記一筆
+            if newly {
+                let page = batch.events.first();
+                let event = Event {
+                    event_id: if identify.mutation_id.is_empty() {
+                        String::new()
+                    } else {
+                        format!("identity:{}:{}", batch.anon_id, identify.mutation_id)
+                    },
+                    happened_at: None,
+                    kind: "identify",
+                    name: if identify.user_id.is_empty() {
+                        identify.email.clone()
+                    } else {
+                        identify.user_id.clone()
+                    },
+                    url: page.map(|e| e.url.clone()).unwrap_or_default(),
+                    path: page.map(|e| e.path.clone()).unwrap_or_default(),
+                    title: page.map(|e| e.title.clone()).unwrap_or_default(),
+                    referrer: String::new(),
+                    referrer_host: String::new(),
+                    props: "{}".into(),
+                };
+                insert_event(tx, &at, &event).await?;
+            }
         }
     }
 
@@ -702,6 +836,7 @@ pub async fn store_in(
     Ok(Stored {
         person_id,
         events: accepted,
+        identity_status,
     })
 }
 

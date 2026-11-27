@@ -16,6 +16,8 @@
   var policy = null, active = false, consent = null, namespace = "", anonId = "", sessionId = "";
   var queue = [], identity = null, timer = null, lastUrl = null, reached = {}, removers = [];
   var inFlight = new Set(), readyCallbacks = [];
+  var initializationCalls = [], afterIdentity = [], identityBusy = false, identityPending = false, configurationSettled = false;
+  var localRevision = 0, confirmedMutation = "";
   var generation = 0, observedEpoch = "", testToken = option("test-token") || "";
   var diagnostics = { status: "loading", last_error: null, duplicates: 0, dropped: 0, attempts: 0, storage: "persistent" };
   var pending = window.cdpq || [];
@@ -34,6 +36,49 @@
     var name = namespace + suffix, value = read(storage, name);
     if (!value) { value = randomId(); write(storage, name, value); }
     return value;
+  }
+  function defer(list, callback) {
+    if (list.length >= 200) { diagnostics.dropped++; diagnose("initialization_capacity"); return; }
+    list.push(callback);
+  }
+  function drainIdentity() {
+    while (!identityBusy && afterIdentity.length) afterIdentity.shift()();
+  }
+  function nextRevision(previous) {
+    previous = Number(previous);
+    if (!Number.isSafeInteger(previous) || previous < 0 || previous >= Number.MAX_SAFE_INTEGER) previous = 0;
+    localRevision = Math.max(Date.now() * 1000, previous + 1, localRevision + 1);
+    return localRevision;
+  }
+  function allocateRevision(epoch) {
+    var storageKey = namespace + "_identity_revision";
+    if (navigator.locks && navigator.locks.request) {
+      return navigator.locks.request(namespace + "_identity_order", function () {
+        if (!active || epoch !== generation) throw new Error("identity_cancelled");
+        var revision = nextRevision(read("localStorage", storageKey));
+        write("localStorage", storageKey, String(revision));
+        if (read("localStorage", storageKey) !== String(revision)) throw new Error("identity_ordering_unavailable");
+        return revision;
+      });
+    }
+    // Readwrite transactions serialize across tabs when Web Locks is unavailable.
+    if (window.indexedDB) return new Promise(function (resolve, reject) {
+      var request = window.indexedDB.open(namespace + "_identity_order", 1);
+      request.onupgradeneeded = function () { request.result.createObjectStore("clock"); };
+      request.onerror = request.onblocked = function () { reject(new Error("identity_ordering_unavailable")); };
+      request.onsuccess = function () {
+        var database = request.result, transaction = database.transaction("clock", "readwrite"), clock = transaction.objectStore("clock"), revision;
+        var previous = clock.get("revision");
+        previous.onsuccess = function () {
+          if (!active || epoch !== generation) { transaction.abort(); return; }
+          revision = nextRevision(Math.max(Number(previous.result) || 0, Number(read("localStorage", storageKey)) || 0));
+          clock.put(revision, "revision");
+        };
+        transaction.oncomplete = function () { database.close(); if (active && epoch === generation) write("localStorage", storageKey, String(revision)); resolve(revision); };
+        transaction.onerror = transaction.onabort = function () { database.close(); reject(new Error("identity_ordering_unavailable")); };
+      };
+    });
+    return Promise.reject(new Error("identity_ordering_unavailable"));
   }
   function dnt() { return policy && policy.respect_dnt && (navigator.doNotTrack === "1" || window.doNotTrack === "1"); }
   function allowed() { return policy && policy.active !== false && !dnt() && consent !== false && (!policy.consent_required || consent === true); }
@@ -59,7 +104,7 @@
     observedEpoch = epoch;
     var action; try { action = JSON.parse(epoch).action; } catch (_) {}
     if (action === "revoke") { consent = false; stop(); remove("sessionStorage", namespace + "_session_id"); return; }
-    generation++; queue = []; identity = null;
+    generation++; queue = []; identity = null; identityPending = false; confirmedMutation = ""; afterIdentity = [];
     anonId = stored("localStorage", "_anon_id");
     remove("sessionStorage", namespace + "_session_id");
     sessionId = stored("sessionStorage", "_session_id");
@@ -87,7 +132,11 @@
       .then(function (res) {
         clearTimeout(timeout);
         if (!res.ok) { var err = new Error("collector_" + res.status); err.retry = res.status === 429 || res.status >= 500; throw err; }
-        inFlight.delete(payload); if (active && epoch === generation) { diagnostics.status = "collecting"; emit(); }
+        inFlight.delete(payload);
+        var disposition = res.headers ? res.headers.get("x-cdp-identity") : null;
+        if (disposition === "stale") { diagnostics.dropped += payload.events.length; diagnose("stale_identity"); }
+        else if (!payload.test_token && (disposition === "applied" || disposition === "replayed") && payload.identify && identity && payload.identify.mutation_id === identity.mutation_id) confirmedMutation = identity.mutation_id;
+        if (active && epoch === generation) { diagnostics.status = "collecting"; emit(); }
       }).catch(function (err) {
         clearTimeout(timeout);
         if (!active || epoch !== generation) { inFlight.delete(payload); return; }
@@ -97,9 +146,15 @@
   }
   function flush(leaving) {
     clearTimeout(timer); timer = null; syncEpoch();
-    if (!active || (!queue.length && !identity)) return;
+    if (!active) return;
+    if (identityBusy) { defer(afterIdentity,function () { flush(leaving); }); return; }
+    if (!queue.length && !identityPending) return;
     var payload = { key: key, anon_id: anonId, session_id: sessionId, consent: consent === true, events: queue.splice(0, 50) };
-    if (identity) { payload.identify = identity; identity = null; }
+    if (identity) {
+      if (identityPending || confirmedMutation !== identity.mutation_id) payload.identify = identity;
+      else payload.identity_context = {mutation_id:identity.mutation_id,revision:identity.revision};
+    }
+    identityPending = false;
     if (testToken) payload.test_token = testToken;
     transport(payload, 1, generation, leaving);
     if (queue.length) flush(leaving);
@@ -107,6 +162,7 @@
   function schedule() { if (queue.length >= 20) flush(false); else if (!timer) timer = setTimeout(function () { flush(false); }, 800); }
   function push(type, name, props) {
     syncEpoch(); if (!active) return;
+    if (identityBusy) { defer(afterIdentity,function () { push(type,name,props); }); return; }
     if (queue.length >= 200) { diagnostics.dropped++; diagnose("queue_full"); return; }
     var event = { event_id: randomId(), happened_at: new Date().toISOString(), type: type, url: sanitize(location.href), title: document.title.slice(0, 300) };
     if (name) event.name = String(name).slice(0, 120);
@@ -115,6 +171,8 @@
   }
   function routeUrl() { return policy.spa_mode === "hash" ? location.href : location.href.split("#")[0]; }
   function page() {
+    if (!active) return;
+    if (identityBusy) { defer(afterIdentity,page); return; }
     var event = push("pageview");
     if (event) event.referrer = sanitize(lastUrl === null ? document.referrer : lastUrl, policy.referrer_scope);
     if (active) { lastUrl = routeUrl(); reached = {}; }
@@ -124,13 +182,15 @@
     removers.push(function () { target.removeEventListener(name, handler, opts); });
   }
   function stop() {
-    active = false; generation++; inFlight.clear(); clearTimeout(timer); timer = null; queue = []; identity = null;
+    active = false; generation++; inFlight.clear(); clearTimeout(timer); timer = null; queue = []; identity = null; identityPending = false; confirmedMutation = ""; afterIdentity = []; initializationCalls = [];
     removers.splice(0).forEach(function (removeListener) { removeListener(); });
     diagnostics.status = dnt() ? "dnt" : "consent_required"; emit();
   }
   function eraseIdentity(broadcast) {
     if (!namespace) return;
     remove("localStorage", namespace + "_anon_id"); remove("sessionStorage", namespace + "_session_id");
+    remove("localStorage", namespace + "_identity_revision");
+    try { if (window.indexedDB) window.indexedDB.deleteDatabase(namespace + "_identity_order"); } catch (_) { /* Storage may already be unavailable. */ }
     if (read("localStorage", "cdp_legacy_claim") === namespace) remove("localStorage", "cdp_anon_id");
     if (broadcast) write("localStorage", namespace + "_epoch", JSON.stringify({action:"revoke",at:Date.now()}));
   }
@@ -186,7 +246,7 @@
     loaded: true, key: key, endpoint: endpoint,
     status: function () { return Object.assign({}, diagnostics, { policy: policy, consent: consent, queue_size: queue.length, namespace: namespace }); },
     diagnose: diagnose,
-    ready: function (callback) { if (typeof callback !== "function") return; if (policy) callback(api); else readyCallbacks.push(callback); },
+    ready: function (callback) { if (typeof callback !== "function") return; if (policy) callback(api); else if (!configurationSettled) defer(readyCallbacks,callback); },
     duplicate: function () { diagnostics.duplicates++; emit(); },
     consent: function (granted) {
       consent = granted === true;
@@ -203,29 +263,52 @@
         if (["user_id","email","name","account","proof"].indexOf(field) >= 0) next[field] = field === "proof" ? value : String(value);
         else if (policy.allowed_traits === null || (policy.allowed_traits || []).indexOf(field) >= 0) next.traits[field] = value;
       });
-      // Preserve attribution boundaries when a different login arrives in the same batch.
-      if (identity) flush(false); identity = next; schedule();
+      // Flush the prior account before allocating a new ordered identity mutation.
+      if (identity) flush(false);
+      var epoch = generation; identityBusy = true;
+      allocateRevision(epoch).then(function (revision) {
+        if (!active || epoch !== generation) return;
+        next.revision = revision; next.mutation_id = randomId();
+        identity = next; identityPending = true; schedule();
+      }).catch(function () { if (active && epoch === generation) diagnose("identity_ordering_unavailable"); })
+        .finally(function () { identityBusy = false; drainIdentity(); });
     },
     track: function (name, props) { if (name) push("custom", name, props); },
     page: page,
     reset: function () {
-      if (!active) return; flush(false); generation++;
+      if (!active) return; flush(false); generation++; identity = null; identityPending = false; confirmedMutation = "";
       remove("localStorage", namespace + "_anon_id"); remove("sessionStorage", namespace + "_session_id");
       anonId = stored("localStorage", "_anon_id"); sessionId = stored("sessionStorage", "_session_id");
       observedEpoch = JSON.stringify({action:"reset",at:Date.now(),nonce:randomId()});
       write("localStorage", namespace + "_epoch", observedEpoch);
     },
-    test: function (token) { if (queue.length || identity) flush(false); testToken = String(token || ""); },
+    test: function (token) { if (queue.length || identity) flush(false); testToken = String(token || ""); confirmedMutation = ""; },
     flush: function () { flush(false); }
   };
+  // Keep both direct API calls and cdpq calls ordered through asynchronous initialization.
+  ["identify","track","page","reset","test","flush"].forEach(function (name) {
+    var implementation = api[name];
+    api[name] = function () {
+      var args = arguments;
+      if (!policy) {
+        if (!configurationSettled && consent !== false) defer(initializationCalls,function () { api[name].apply(api,args); });
+        return;
+      }
+      if (!active && name !== "test") return;
+      if (identityBusy) { defer(afterIdentity,function () { api[name].apply(api,args); }); return; }
+      return implementation.apply(api,args);
+    };
+  });
   window.cdp = api;
   function run(call) { if (call && typeof api[call[0]] === "function") api[call[0]].apply(api, [].slice.call(call, 1)); }
   window.cdpq = { push: run };
-  // Consent can be set before config arrives; tracking calls before permission are deliberately discarded.
+  // Resolve all pre-loader consent choices before retaining initialization commands.
   for (var i = 0; i < pending.length; i++) if (["consent", "ready"].indexOf(pending[i][0]) >= 0) run(pending[i]);
+  for (var j = 0; j < pending.length; j++) if (["consent", "ready"].indexOf(pending[j][0]) < 0) run(pending[j]);
   window.fetch(base + "/tracker-config/" + encodeURIComponent(key), { credentials: "omit" })
     .then(function (res) { if (!res.ok) throw new Error("configuration_unavailable"); return res.json(); })
     .then(function (config) {
+      configurationSettled = true;
       policy = config.policy; policy.active = config.active; namespace = "cdp_" + config.namespace;
       ["auto-click","auto-scroll","auto-page"].forEach(function (attr) { if (option(attr) === "false") policy[attr.replace(/-/g,"_")] = false; });
       if (option("respect-dnt") === "true") policy.respect_dnt = true;
@@ -233,6 +316,7 @@
       if (consent === false) eraseIdentity(true);
       start();
       readyCallbacks.splice(0).forEach(function (callback) { callback(api); });
-      if (active) for (var j = 0; j < pending.length; j++) if (["consent", "ready"].indexOf(pending[j][0]) < 0) run(pending[j]);
-    }).catch(function (err) { diagnostics.status = "error"; diagnose(err.message); });
+      var calls = initializationCalls.splice(0);
+      if (active) calls.forEach(function (callback) { callback(); });
+    }).catch(function (err) { configurationSettled = true; initializationCalls = []; readyCallbacks = []; diagnostics.status = "error"; diagnose(err.message); });
 })(window, document);

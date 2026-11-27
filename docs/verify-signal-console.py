@@ -3,7 +3,7 @@
 Build web/API first; then python docs/verify-signal-console.py [--binary PATH].
 Requires Playwright and installed Google Chrome. Writes actual screenshots + JSON evidence.
 """
-import argparse, asyncio, html, json, os, socket, subprocess, tempfile, threading, time, urllib.request
+import argparse, asyncio, html, json, os, socket, sqlite3, subprocess, tempfile, threading, time, urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -16,8 +16,11 @@ UA='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, l
 def free_port():
     with socket.socket() as sock: sock.bind(('127.0.0.1',0)); return sock.getsockname()[1]
 
-async def main(binary):
+async def main(binary,captures=True):
+    global OUT
     with tempfile.TemporaryDirectory(prefix='lite-cdp-signal-') as tmp:
+        if not captures:
+            OUT=Path(tmp)/'images';OUT.mkdir()
         port=free_port();url=f'http://127.0.0.1:{port}'
         env={k:v for k,v in os.environ.items() if not k.startswith(('ACCESS_','CDP_'))}
         env.update(CDP_BIND=f'127.0.0.1:{port}',CDP_DATABASE_PATH=f'{tmp}/demo.db',CDP_STATIC_DIR=str(ROOT/'src/web/dist'),CDP_PUBLIC_URL=url,ACCESS_PUBLIC_URL=url,CDP_COOKIE_SECURE='false',CDP_RATE_LIMIT='0',CDP_DEMO_PASSWORD='SignalConsole-Disposable-2026')
@@ -81,6 +84,55 @@ async def main(binary):
                 token=await api(f'/sites/{test_sid}/installation-tests','post',{});pre=await counts()
                 c3=await browser.new_context(user_agent=UA);t=await c3.new_page();await t.goto(fixture_url+'/?test='+token['token']);await t.wait_for_function('window.cdp?.status().policy');await t.locator('#grant').click();await t.wait_for_timeout(950)
                 receipt=await api(f"/sites/{test_sid}/installation-tests/{token['token']}");assert receipt['receipt']['analytics_written'] is False and receipt['receipt']['events'][0]['type']=='pageview';assert await counts()==pre
+                # Hold an older identity in flight while a second tab commits the newer account.
+                ordering=await api('/sites','post',{'name':'Identity ordering','allowed_origins':[fixture_url],'collection_policy':{'auto_page':False,'auto_click':False,'auto_scroll':False}})
+                fixture_state['key']=ordering['key'];ordering_sid=ordering['id']
+                def current_subject(anon):
+                    with sqlite3.connect(f'{tmp}/demo.db') as database:
+                        return database.execute('SELECT p.user_id FROM devices d JOIN people p ON p.id=d.person_id WHERE d.site_id=? AND d.anon_id=?',(ordering_sid,anon)).fetchone()[0]
+                ordered_context=await browser.new_context(user_agent=UA);u=await ordered_context.new_page();v=await ordered_context.new_page()
+                for tab in [u,v]:
+                    await tab.goto(fixture_url);await tab.wait_for_function('window.cdp?.status().policy')
+                held=asyncio.Event();release=asyncio.Event();ordered_payloads=[]
+                async def hold_old(route):
+                    body=json.loads(route.request.post_data);ordered_payloads.append(body)
+                    if body.get('identify',{}).get('user_id')=='ordered-A':held.set();await release.wait()
+                    response=await route.fetch();await route.fulfill(response=response)
+                await u.route(url+'/collect',hold_old)
+                v.on('request',lambda req:ordered_payloads.append(json.loads(req.post_data)) if req.url==url+'/collect' else None)
+                await u.evaluate("cdp.identify({user_id:'ordered-A'});cdp.flush()")
+                await asyncio.wait_for(held.wait(),10)
+                await v.evaluate("cdp.identify({user_id:'ordered-B'});cdp.flush()")
+                await v.wait_for_function("cdp.status().status === 'collecting'")
+                older,newer=ordered_payloads[0],ordered_payloads[1]
+                assert newer['identify']['revision']>older['identify']['revision']
+                release.set();await u.wait_for_function("cdp.status().last_error === 'stale_identity'")
+                assert current_subject(newer['anon_id'])=='ordered-B'
+                await u.reload();await u.wait_for_function('window.cdp?.status().policy')
+                await u.evaluate("cdp.identify({user_id:'ordered-C'});cdp.flush()")
+                await u.wait_for_function("cdp.status().status === 'collecting'")
+                assert ordered_payloads[-1]['identify']['revision']>newer['identify']['revision'] and current_subject(newer['anon_id'])=='ordered-C'
+                # Real IndexedDB fallback serializes the same two-tab allocation when locks are unavailable.
+                idb=await browser.new_context(user_agent=UA);await idb.add_init_script("Object.defineProperty(navigator,'locks',{value:undefined})")
+                idb_payloads=[];idb_tabs=[await idb.new_page(),await idb.new_page()]
+                for tab in idb_tabs:
+                    tab.on('request',lambda req:idb_payloads.append(json.loads(req.post_data)) if req.url==url+'/collect' else None)
+                    await tab.goto(fixture_url);await tab.wait_for_function('window.cdp?.status().policy')
+                await asyncio.gather(*[tab.evaluate(f"cdp.identify({{user_id:'idb-{number}'}});cdp.flush()") for number,tab in enumerate(idb_tabs)])
+                for tab in idb_tabs:await tab.wait_for_function("cdp.status().status === 'collecting'")
+                assert len({body['identify']['revision'] for body in idb_payloads})==2
+                newest=max(idb_payloads,key=lambda body:body['identify']['revision'])
+                assert current_subject(newest['anon_id'])==newest['identify']['user_id']
+                # A real script/window onload callback runs while public config is deliberately pending.
+                onload_context=await browser.new_context(user_agent=UA)
+                await onload_context.add_init_script("window.addEventListener('load',()=>{cdpq.push(['identify',{user_id:'onload-member'}]);cdpq.push(['track','onload-action']);cdpq.push(['flush']);})")
+                loaded=await onload_context.new_page();release_config=asyncio.Event();onload_payloads=[]
+                async def hold_config(route):await release_config.wait();await route.continue_()
+                await loaded.route(url+'/tracker-config/*',hold_config)
+                loaded.on('request',lambda req:onload_payloads.append(json.loads(req.post_data)) if req.url==url+'/collect' else None)
+                await loaded.goto(fixture_url,wait_until='load');assert await loaded.evaluate('localStorage.length')==0 and not onload_payloads
+                release_config.set();await loaded.wait_for_function("cdp.status().status === 'collecting'")
+                assert onload_payloads[0]['identify']['user_id']=='onload-member' and onload_payloads[0]['events'][0]['name']=='onload-action'
                 # Real UI: framework, policy save, simulator and receipt creation.
                 await page.goto(url+base+'/install',wait_until='networkidle');await page.get_by_role('button',name='使用最少採集設定').click();await page.get_by_role('button',name='儲存採集設定').click();await expect(page.get_by_text('使用已儲存設定',exact=True)).to_be_visible()
                 await page.get_by_role('tab',name='Next.js',exact=True).click();assert 'afterInteractive' in await page.get_by_label('追蹤程式碼',exact=True).inner_text()
@@ -101,7 +153,7 @@ async def main(binary):
                 await page.get_by_role('radio',name='淺色',exact=True).click();await settle();await page.locator('.journey-observatory').screenshot(path=str(OUT/'screenshot-journey-light.png'),animations='disabled');await page.set_viewport_size({'width':390,'height':844});await settle();await page.screenshot(path=str(OUT/'screenshot-mobile.png'),full_page=True,animations='disabled')
                 cover=await context.new_page();await cover.set_viewport_size({'width':1440,'height':720});await cover.set_content((ROOT/'docs/images/cover.svg').read_text());await cover.add_style_tag(content='body{margin:0}svg{display:block;width:1440px;height:720px}');await cover.screenshot(path=str(OUT/'cover-preview.png'))
                 assert not errors,errors
-                report={'browser':'Google Chrome via Playwright','disposable_database':True,'backend':'real Rust/SQLite','checks':['consent-no-storage-no-collection','URL sanitization','two-device user_id merge','shared-email different users separated','duplicate load idempotent','conflicting key diagnostic','cross-tab logout','cross-tab revoke','response-loss retry deduplicated','test receipt isolated','UI policy persistence','Next template','simulator identity merge','desktop light/dark and mobile styles/no overflow'],'page_errors':errors,'retry_attempts':attempts}
+                report={'browser':'Google Chrome via Playwright','disposable_database':True,'backend':'real Rust/SQLite','checks':['consent-no-storage-no-collection','URL sanitization','two-device user_id merge','shared-email different users separated','duplicate load idempotent','conflicting key diagnostic','cross-tab logout','cross-tab revoke','response-loss retry deduplicated','stale identity arrival blocked','shared revision survives reload','two-tab IndexedDB fallback','onload commands survive pending config','test receipt isolated','UI policy persistence','Next template','simulator identity merge','desktop light/dark and mobile styles/no overflow'],'page_errors':errors,'retry_attempts':attempts}
                 (ROOT/'docs/signal-console-browser.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
                 print(json.dumps(report,ensure_ascii=False,indent=2));await browser.close()
         finally:
@@ -109,4 +161,4 @@ async def main(binary):
             try:server.wait(timeout=10)
             except subprocess.TimeoutExpired:server.kill()
 if __name__=='__main__':
-    parser=argparse.ArgumentParser();parser.add_argument('--binary',default=str(ROOT/'src/api/target/debug/lite-cdp'));args=parser.parse_args();asyncio.run(main(str(Path(args.binary).resolve())))
+    parser=argparse.ArgumentParser();parser.add_argument('--binary',default=str(ROOT/'src/api/target/debug/lite-cdp'));parser.add_argument('--no-captures',action='store_true');args=parser.parse_args();asyncio.run(main(str(Path(args.binary).resolve()),not args.no_captures))

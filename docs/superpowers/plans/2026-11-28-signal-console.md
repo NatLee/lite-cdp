@@ -10,3 +10,5 @@
 Progress is recorded in `docs/signal-console-verification.md`.
 
 All six implementation steps are complete. Local suite/build/browser/Compose evidence is recorded in the verification document; parent review and any remote release remain separate.
+
+Review followup: both identity-ordering and loader-initialization blockers reproduced with failing tests, fixed, and independently re-reviewed. Expanded real-browser and Compose checks cover delayed first delivery, shared clocks, reloads, IndexedDB fallback and onload commands.

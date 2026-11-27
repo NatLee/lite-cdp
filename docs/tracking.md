@@ -8,7 +8,7 @@ Use one loader per document with one site key and collector endpoint. The same l
 
 Existing sites and `POST /api/sites` calls that omit `collection_policy` retain legacy defaults: automatic page/click/scroll, history routing, no required consent, no DNT enforcement, full referrer, query kept, all supported flat traits, and legacy email identity. Hashes and URL credentials are always removed. The UI's **最少採集設定** changes the draft to required consent, DNT, pageviews, no click/scroll, query stripped, origin-only referrer, no click text, and an empty trait allowlist; it only takes effect after Save. Review existing sites deliberately before switching them.
 
-The additive `0005_collection_identity.sql` migration preserves old people, devices, events, and site keys. It backfills `received_at` from the historical timestamp and initializes private identity secrets. Legacy event payloads without IDs or client time remain accepted. `/api/v1` operation names, scopes and projections, MCP tools, access-kit, auth, registration, and deployment origins are unchanged.
+The additive `0005_collection_identity.sql` and `0006_identity_order.sql` migrations preserve old people, devices, events, and site keys. It backfills `received_at` from the historical timestamp and initializes private identity secrets. Legacy event payloads without IDs or client time remain accepted. `/api/v1` operation names, scopes and projections, MCP tools, access-kit, auth, registration, and deployment origins are unchanged.
 
 ## The identity algorithm
 
@@ -42,7 +42,7 @@ function onLogout() {
 }
 ```
 
-Call consent before login, using the real saved CMP state. After a grant, repeat the current authenticated user's identify explicitly. `ready` waits for configuration; it does not queue analytics before consent. Calls made while collection is denied are discarded and never backfilled. With required consent, the collector independently requires `consent: true`; this flag is a client claim, not a consent audit record. DNT is honored both by the tracker and by the collector when the HTTP DNT header is supplied. Pause and configuration changes take effect on the next document load; the collector enforces current policy immediately, including rejecting a paused site.
+Call consent before login, using the real saved CMP state. After a grant, repeat the current authenticated user's identify explicitly. `ready` waits for configuration. Commands submitted through either `cdpq.push` or the direct API while configuration is pending are held in a bounded, memory-only initialization queue (up to 200 commands); no tracking ID or event is created yet. Once policy resolves, commands run only if the resolved consent/DNT gate permits collection, otherwise they are discarded. Commands submitted while consent is known to be denied are immediately discarded and never backfilled. Configuration failure clears the initialization queue. With required consent, the collector independently requires `consent: true`; this flag is a client claim, not a consent audit record. DNT is honored both by the tracker and by the collector when the HTTP DNT header is supplied. Pause and configuration changes take effect on the next document load; the collector enforces current policy immediately, including rejecting a paused site.
 
 ## Framework recipes
 
@@ -86,6 +86,16 @@ export default defineNuxtPlugin(nuxtApp => {
 
 **Manual routing:** set `data-spa-mode="manual" data-auto-page="false"`, then call `page()` once after a successful route and title update. For Vue Router, an application-level `afterEach` hook can do this; ignore navigation failures. For Next, use one client observer of pathname/search parameters and guard identical URLs. Manual mode avoids history wrapping but the application owns initial-page and route deduplication. Hash mode observes `hashchange`; hashes trigger new pageviews but are removed from transmitted URLs. [Vue Router navigation hooks](https://router.vuejs.org/guide/advanced/navigation-guards.html).
 
+## Identity replay and ordering
+
+The tracker gives every explicit `identify` a random `mutation_id` and a positive safe-integer `revision`. Revision allocation is serialized across same-origin tabs using Web Locks and a persisted per-site logical clock. Without Web Locks, an IndexedDB readwrite transaction serializes that clock; this database stores a revision number, not user IDs or traits. Following commands wait in a bounded, memory-only queue until allocation completes. Reloads continue the stored clock. If a safe shared ordering primitive or required storage cannot be used, `identity_ordering_unavailable` is reported and that identity claim is not sent; there is no racing in-memory counter fallback.
+
+The collector keeps a per-device high-water revision independently of event retention. It applies identity/traits/device binding only for a newer mutation. A repeated mutation does not change profile fields or add another identify event. An older mutation, conflicting equal revision, or metadata-free claim against an already ordered device is ignored with `X-CDP-Identity: stale`; the tracker exposes `stale_identity`. Associated events in a stale envelope are discarded so they cannot be attributed to the newer account. Old delayed data is never promoted to a newer revision automatically.
+
+Retries preserve the original mutation ID/revision. Until a production collector acknowledges an identity, each related batch includes the complete claim. After acknowledgement, later batches send `identity_context: {mutation_id, revision}` instead, without resending profile fields or an expiring HMAC proof. A context is accepted only if it matches the device’s current mutation. Test receipts do not acknowledge production identities. Mutation metadata is SDK-managed; custom HTTP clients must supply both fields together and use the same metadata on retry. Independent clients sharing one `anon_id` must coordinate a single revision order rather than each starting their own counter.
+
+Legacy compatibility remains explicit. On devices that have not opted into ordered identity, an identity attached only to previously received event IDs is treated as a replay, and a timestamped identity older than the last timestamped claim is ignored (legacy event timestamps are normalized to seconds). Bare legacy identity-only calls with no mutation metadata or client timestamp retain arrival-order behavior: a repeated A after B can mean a legitimate relogin or a delayed request, and those cases are indistinguishable. Upgrade such clients for retry/order guarantees. Once ordered identity has been recorded for a device, a legacy metadata-free call cannot downgrade it; use the current tracker or reset to a new anonymous ID for a separate legacy client.
+
 ## What is sent and stored
 
 | Data | Source and controls |
@@ -103,7 +113,7 @@ The tracker does not set cookies. Ordinary fetches use `credentials: "omit"`; pa
 
 Client timestamps accept seven days in the past through five minutes in the future. Invalid values reject the batch; a missing time uses receipt time. `event_id` is 8–64 ASCII letters/digits/`-`/`_`, unique within the site. Replays do not increment events, pageviews or label hits. Legacy events without an ID cannot be deduplicated. Deduplication lasts as long as the event row is retained; this is not a durable global delivery ledger.
 
-Batches flush at 20 events or 800 ms, with up to 50 events per payload. Oversized batches split below 60 KiB; one oversized or non-serializable payload is discarded with a diagnostic. At most 8 batches are in flight and the queue is bounded at 200 events. Fetch times out at 10 seconds; network/429/5xx can retry twice with the same IDs, then discard. Other 4xx do not retry. Page-exit beacon is best-effort and cannot report acceptance. There is no persistent offline queue and no exactly-once guarantee. Logout/revoke invalidate pending retries from the old identity epoch.
+Batches flush at 20 events or 800 ms, with up to 50 events per payload. Oversized batches split below 60 KiB; one oversized or non-serializable payload is discarded with a diagnostic. At most 8 batches are in flight and the queue is bounded at 200 events. Fetch times out at 10 seconds; network/429/5xx can retry twice with the same IDs, then discard. Other 4xx do not retry. Page-exit beacon is best-effort and cannot report acceptance. There is no persistent offline queue and no exactly-once guarantee. Logout/revoke invalidate pending retries from the old identity epoch. Consent revocation also removes the local revision clock; already received server high-water marks remain with the device history.
 
 ## Signed member IDs
 

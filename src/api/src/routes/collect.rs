@@ -186,7 +186,19 @@ pub async fn collect(State(state): State<AppState>, req: Request) -> Result<Resp
     }
     // 爬蟲：照樣回成功，但不存
     if !ingest::is_bot(&user_agent) {
-        ingest::store(&state.db, site_id, &batch, &user_agent, &db::now()).await?;
+        let stored = ingest::store(&state.db, site_id, &batch, &user_agent, &db::now()).await?;
+        if let Some(status) = stored.identity_status {
+            return Ok(with_cors(
+                (
+                    StatusCode::NO_CONTENT,
+                    [
+                        ("x-cdp-identity", status),
+                        ("access-control-expose-headers", "x-cdp-identity"),
+                    ],
+                )
+                    .into_response(),
+            ));
+        }
     }
     Ok(with_cors(StatusCode::NO_CONTENT.into_response()))
 }
