@@ -44,14 +44,14 @@ function CodeBlock({ label, code }: { label: string; code: string }) {
       </pre>
       <button
         type="button"
-        className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-md bg-white/10 px-2 py-1 text-xs text-zinc-100 transition-colors hover:bg-white/20"
+        className="absolute top-2 right-2 inline-flex items-center gap-1 rounded bg-white/10 px-2 py-1 text-xs text-zinc-100 transition-colors hover:bg-white/20"
         aria-label={`複製${label}`}
         onClick={() => void copy()}
       >
         {copied ? (
-          <Check className="size-3.5" />
+          <Check className="size-4" />
         ) : (
-          <Copy className="size-3.5" />
+          <Copy className="size-4" />
         )}{" "}
         {copied ? "已複製" : "複製"}
       </button>
@@ -70,7 +70,7 @@ function Step({
 }) {
   return (
     <li className="flex gap-3">
-      <span className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700 dark:bg-brand-950 dark:text-brand-300">
+      <span className="mt-1 grid size-6 shrink-0 place-items-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700 dark:bg-brand-950 dark:text-brand-300">
         {n}
       </span>
       <div className="min-w-0 flex-1">
@@ -176,7 +176,7 @@ function Guide({ site }: { site: Site }) {
       </ol>
       <div className="border-t border-zinc-100 px-4 py-4 sm:px-5 dark:border-zinc-800">
         <h3 className="text-sm font-semibold">可以加在 script 標籤上的選項</h3>
-        <dl className="mt-2 flex flex-col gap-1.5 text-sm">
+        <dl className="mt-2 flex flex-col gap-2 text-sm">
           {OPTIONS.map((o) => (
             <div key={o.attr} className="flex flex-wrap items-baseline gap-x-3">
               <dt className="font-mono text-xs text-zinc-800 dark:text-zinc-200">

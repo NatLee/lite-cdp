@@ -332,7 +332,7 @@ function Accounts({ accounts, error, reload }: { accounts?: Account[]; error: st
                 return (
                   <tr key={a.id} className={a.disabled ? "text-zinc-400 dark:text-zinc-500" : ""}>
                     <td className="td">
-                      <span className="font-medium">{a.display_name}</span>
+                      <span className="font-semibold">{a.display_name}</span>
                       <span className="ml-2 font-mono text-xs text-zinc-500 dark:text-zinc-400">{a.username}</span>
                       {self && <span className="ml-2 text-xs text-zinc-500 dark:text-zinc-400">（你）</span>}
                       {a.disabled && (
@@ -357,7 +357,7 @@ function Accounts({ accounts, error, reload }: { accounts?: Account[]; error: st
                     <td className="td whitespace-nowrap">{dateTime(a.created_at)}</td>
                     <td className="td text-right whitespace-nowrap">
                       <button className="btn btn-ghost px-2 py-1 text-xs" onClick={() => setDialog({ account: a })}>
-                        <Pencil className="size-3.5" /> 編輯
+                        <Pencil className="size-4" /> 編輯
                       </button>
                       {!self && (
                         <button

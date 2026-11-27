@@ -46,7 +46,7 @@ const EVENT_TYPES: EventType[] = [
 
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex items-baseline justify-between gap-4 py-1.5 text-sm">
+    <div className="flex items-baseline justify-between gap-4 py-2 text-sm">
       <dt className="shrink-0 text-zinc-500 dark:text-zinc-400">{label}</dt>
       <dd className="min-w-0 text-right break-words">{children}</dd>
     </div>
@@ -104,9 +104,9 @@ function EventRow({ event }: { event: TimelineEvent }) {
       detail = event.path;
   }
   return (
-    <li className="flex gap-3 px-4 py-2.5 sm:px-5">
+    <li className="flex gap-3 px-4 py-3 sm:px-5">
       <span
-        className={`mt-0.5 grid size-7 shrink-0 place-items-center rounded-full ${
+        className={`mt-1 grid size-7 shrink-0 place-items-center rounded-full ${
           event.type === "identify"
             ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
             : event.type === "custom"
@@ -115,16 +115,16 @@ function EventRow({ event }: { event: TimelineEvent }) {
         }`}
         title={EVENT_LABEL[event.type]}
       >
-        <Icon className="size-3.5" />
+        <Icon className="size-4" />
       </span>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm">
           {event.type !== "pageview" && event.type !== "identify" && (
-            <span className="mr-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+            <span className="mr-2 text-xs text-zinc-500 dark:text-zinc-400">
               {EVENT_LABEL[event.type]}
             </span>
           )}
-          <span className={event.type === "pageview" ? "" : "font-medium"}>
+          <span className={event.type === "pageview" ? "" : "font-semibold"}>
             {title}
           </span>
         </p>
@@ -138,7 +138,7 @@ function EventRow({ event }: { event: TimelineEvent }) {
             {props.map(([key, value]) => (
               <span
                 key={key}
-                className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-[11px] text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+                className="rounded bg-zinc-100 px-2 py-1 font-mono text-[11px] text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
               >
                 {key}:{" "}
                 {typeof value === "object"
@@ -242,9 +242,10 @@ function Timeline({ siteId, personId }: { siteId: number; personId: number }) {
       {events && events.length > 0 && (
         <JourneyMap key={`${siteId}:${personId}:${type}`} events={events} />
       )}
+      {events && events.length > 0 && <h2 className="ledger-section-heading">04 / 完整時間軸 · 逐筆紀錄</h2>}
       {days.map(({ day, items }) => (
         <div key={day}>
-          <h3 className="border-y border-zinc-100 bg-zinc-50 px-4 py-1.5 text-xs font-medium text-zinc-500 first:border-t-0 sm:px-5 dark:border-zinc-800 dark:bg-zinc-800/40 dark:text-zinc-400">
+          <h3 className="border-y border-zinc-100 bg-zinc-50 px-4 py-2 text-xs font-semibold text-zinc-500 first:border-t-0 sm:px-5 dark:border-zinc-800 dark:bg-zinc-800/40 dark:text-zinc-400">
             {day}
           </h3>
           <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -318,7 +319,7 @@ export function PersonPage() {
                     <Badge>匿名訪客</Badge>
                   )}
                 </h1>
-                <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
+                <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                   {person.name && person.email ? `${person.email}・` : ""}
                   最後一次來是{timeAgo(person.last_seen)}
                 </p>
@@ -348,7 +349,7 @@ export function PersonPage() {
                     {person.labels.map((l) => (
                       <li
                         key={l.id}
-                        className={`flex items-center justify-between gap-3 px-4 py-2.5 sm:px-5 ${l.hits < l.min_hits ? "opacity-60" : ""}`}
+                        className={`flex items-center justify-between gap-3 px-4 py-3 sm:px-5 ${l.hits < l.min_hits ? "opacity-60" : ""}`}
                       >
                         <Badge tone={l.color}>{l.name}</Badge>
                         <span
@@ -400,7 +401,7 @@ export function PersonPage() {
                   {person.devices.map((d) => (
                     <li
                       key={d.id}
-                      className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm sm:px-5"
+                      className="flex items-center justify-between gap-3 px-4 py-3 text-sm sm:px-5"
                     >
                       <span>
                         {d.browser || "不明的瀏覽器"}

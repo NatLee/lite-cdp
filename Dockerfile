@@ -12,8 +12,9 @@ RUN pnpm build
 
 # 2. 後端
 FROM rust:1-trixie AS api
-WORKDIR /api
+WORKDIR /workspace/src/api
 COPY src/api/Cargo.toml src/api/Cargo.lock ./
+COPY crates/access-kit /workspace/crates/access-kit
 COPY src/api/migrations ./migrations
 COPY src/api/src ./src
 RUN cargo build --release --locked
@@ -24,7 +25,7 @@ RUN useradd --uid 10001 --create-home --home-dir /home/app --shell /usr/sbin/nol
     && mkdir -p /app/data \
     && chown app /app/data
 WORKDIR /app
-COPY --from=api /api/target/release/lite-cdp /usr/local/bin/lite-cdp
+COPY --from=api /workspace/src/api/target/release/lite-cdp /usr/local/bin/lite-cdp
 COPY --from=web /web/dist /app/web
 ENV CDP_BIND=0.0.0.0:8585 \
     CDP_DATA_DIR=/app/data \

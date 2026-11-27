@@ -1,0 +1,34 @@
+.ledger-section-heading {
+  padding: 16px 24px;
+  color: var(--color-zinc-600);
+  background: var(--color-zinc-100);
+  border-bottom: 1px solid var(--atlas-rule);
+  font-size: 12px;
+  font-weight: 600;
+}
+/* Cursor geometry follows the selected recorded event, not elapsed time. */
+.journey-cursor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #b9d5f3;
+  border-radius: 50%;
+  pointer-events: none;
+  transition: transform 180ms ease-out;
+}
+.journey-focus { animation: event-detail-arrive 180ms ease-out; }
+.observatory-route { animation: route-arrive 200ms ease-out; }
+@keyframes event-detail-arrive {
+  from { opacity: 0.5; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes route-arrive {
+  from { opacity: 0.5; transform: translateX(8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .journey-cursor { transition: none; }
+  .journey-focus, .observatory-route { animation: none; }
+}

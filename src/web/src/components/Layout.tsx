@@ -2,6 +2,7 @@ import {
   Code2,
   FileText,
   Globe,
+  KeyRound,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -76,12 +77,13 @@ const SITE_NAV: NavItem[] = [
 
 const GLOBAL_NAV: NavItem[] = [
   { to: "/sites", label: "所有網站", icon: Globe },
+  { to: "/connections", label: "連線與存取", icon: KeyRound },
   { to: "/settings", label: "帳號設定", icon: Settings },
 ];
 
 function Brand() {
   return (
-    <Link to="/" className="brand flex items-center gap-2.5">
+    <Link to="/" className="brand flex items-center gap-3">
       <img src="/favicon.svg" alt="" className="size-8" />
       <span className="leading-tight">
         <span className="block text-sm font-semibold tracking-tight">
@@ -96,9 +98,9 @@ function Brand() {
 }
 
 function navClass(isActive: boolean): string {
-  return `atlas-nav-link flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
+  return `atlas-nav-link flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
     isActive
-      ? "bg-brand-50 font-medium text-brand-700 dark:bg-brand-950/70 dark:text-brand-200"
+      ? "bg-brand-50 font-semibold text-brand-700 dark:bg-brand-950/70 dark:text-brand-200"
       : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
   }`;
 }
@@ -164,7 +166,7 @@ function SidebarNav({
           </label>
           <select
             id={onNavigate ? "site-switcher-mobile" : "site-switcher"}
-            className="input mb-2 font-medium"
+            className="input mb-2 font-semibold"
             value={current.id}
             onChange={(e) => {
               // 換網站時留在同一種頁面
@@ -207,7 +209,7 @@ interface ThemeControls {
 function ThemeToggle({ theme, onThemeChange }: ThemeControls) {
   return (
     <div
-      className="flex rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800"
+      className="flex rounded-lg bg-zinc-100 p-1 dark:bg-zinc-800"
       role="radiogroup"
       aria-label="外觀"
     >
@@ -218,13 +220,13 @@ function ThemeToggle({ theme, onThemeChange }: ThemeControls) {
           aria-checked={theme === value}
           title={label}
           onClick={() => onThemeChange(value)}
-          className={`flex flex-1 items-center justify-center rounded-md py-1 transition-colors ${
+          className={`flex flex-1 items-center justify-center rounded py-1 transition-colors ${
             theme === value
-              ? "bg-white text-brand-700 shadow-sm dark:bg-zinc-950 dark:text-brand-300"
+              ? "bg-white text-brand-700  dark:bg-zinc-950 dark:text-brand-300"
               : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100"
           }`}
         >
-          <Icon className="size-3.5" />
+          <Icon className="size-4" />
           <span className="sr-only">{label}</span>
         </button>
       ))}
@@ -238,12 +240,12 @@ function SidebarFooter({ theme, onThemeChange }: ThemeControls) {
   return (
     <div className="atlas-account">
       <div className="flex items-center gap-1">
-        <span className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5">
+        <span className="flex min-w-0 flex-1 items-center gap-2 px-2 py-2">
           <span className="grid size-7 shrink-0 place-items-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700 dark:bg-brand-950 dark:text-brand-300">
             {Array.from(user.display_name)[0]}
           </span>
           <span className="min-w-0">
-            <span className="block truncate text-sm font-medium">
+            <span className="block truncate text-sm font-semibold">
               {user.display_name}
             </span>
             <span className="block text-[11px] text-zinc-500 dark:text-zinc-400">
@@ -305,11 +307,11 @@ export function Layout() {
             className="absolute inset-0 bg-zinc-950/50"
             onClick={() => setOpen(false)}
           />
-          <div className="atlas-mobile absolute inset-y-0 left-0 flex w-72 flex-col gap-6 bg-white px-3 py-4 shadow-xl dark:bg-zinc-900">
+          <div className="atlas-mobile absolute inset-y-0 left-0 flex w-72 flex-col gap-6 bg-white px-3 py-4  dark:bg-zinc-900">
             <div className="flex items-center justify-between px-2">
               <Brand />
               <button
-                className="btn btn-ghost px-1.5"
+                className="btn btn-ghost px-2"
                 onClick={() => setOpen(false)}
                 aria-label="關閉選單"
               >

@@ -123,7 +123,7 @@ function Preview({ siteId, preview, error }: { siteId: number; preview?: Segment
       {preview && (
         <>
           <div className="px-4 py-4 sm:px-5">
-            <p className="flex items-baseline gap-1.5" aria-live="polite">
+            <p className="flex items-baseline gap-2" aria-live="polite">
               <Users className="size-4 self-center text-zinc-400" />
               <span className="text-3xl font-semibold tracking-tight tabular-nums" data-testid="preview-count">
                 {num(preview.count)}
@@ -142,7 +142,7 @@ function Preview({ siteId, preview, error }: { siteId: number; preview?: Segment
           {preview.sample.length > 0 && (
             <ul className="divide-y divide-zinc-100 border-t border-zinc-100 dark:divide-zinc-800 dark:border-zinc-800">
               {preview.sample.map((p) => (
-                <li key={p.id} className="flex items-center justify-between gap-3 px-4 py-2.5 sm:px-5">
+                <li key={p.id} className="flex items-center justify-between gap-3 px-4 py-3 sm:px-5">
                   <div className="min-w-0">
                     <PersonLink siteId={siteId} person={p} />
                     <div className="mt-1 pl-10">
@@ -295,9 +295,9 @@ export function SegmentEditor() {
                       role="radio"
                       aria-checked={kind === k}
                       onClick={() => setKind(k)}
-                      className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+                      className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
                         kind === k
-                          ? "border-brand-600 bg-brand-600 font-medium text-white dark:border-brand-500 dark:bg-brand-500 dark:text-zinc-950"
+                          ? "border-brand-600 bg-brand-600 font-semibold text-white dark:border-brand-500 dark:bg-brand-500 dark:text-zinc-950"
                           : "border-zinc-300 text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
                       }`}
                     >
@@ -320,7 +320,7 @@ export function SegmentEditor() {
                       disabled={rules[group].length >= 10}
                       onClick={() => change(group, [...rules[group], blank(labels.data?.length ? "label" : "seen_within", labels.data ?? [])])}
                     >
-                      <Plus className="size-3.5" /> 加條件
+                      <Plus className="size-4" /> 加條件
                     </button>
                   }
                 />

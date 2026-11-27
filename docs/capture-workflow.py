@@ -6,8 +6,10 @@ Requires Playwright, Chrome and a running isolated instance seeded by `lite-cdp 
 """
 import asyncio
 import os
+import tempfile
 from pathlib import Path
 from playwright.async_api import async_playwright, expect
+from frontend_style_audit import assert_computed_styles
 
 URL = os.environ.get("DEMO_URL", "http://127.0.0.1:15375").rstrip("/")
 OUT = Path(__file__).resolve().parent / "images"
@@ -23,12 +25,16 @@ async def settle(page):
     await page.evaluate("document.fonts.ready")
     await page.evaluate("Promise.all([...document.images].map(i => i.decode().catch(() => {})))")
     await page.evaluate("new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))")
+    await assert_computed_styles(page)
     await page.mouse.move(0, 0)
     assert not await page.evaluate("document.documentElement.scrollWidth > innerWidth"), page.url
 
 async def main():
     async with async_playwright() as p:
-        browser = await p.chromium.launch(channel=os.environ.get("PLAYWRIGHT_CHANNEL", "chrome"))
+        options = {"channel": os.environ.get("PLAYWRIGHT_CHANNEL", "chrome")}
+        if os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE"):
+            options = {"executable_path": os.environ["PLAYWRIGHT_CHROMIUM_EXECUTABLE"]}
+        browser = await p.chromium.launch(**options)
         context = await browser.new_context(viewport={"width": 1440, "height": 1050}, color_scheme="light", timezone_id="Asia/Taipei")
         page = await context.new_page()
         errors = []
@@ -42,6 +48,18 @@ async def main():
         await page.get_by_label("密碼", exact=True).fill(os.environ["DEMO_PASSWORD"])
         await page.get_by_role("button", name="登入", exact=True).click()
         await expect(page.get_by_role("button", name="登出", exact=True)).to_be_visible()
+        # Record only the authenticated workflow, never the login form.
+        auth = await context.storage_state()
+        await context.close()
+        video_dir = tempfile.TemporaryDirectory(prefix="themed-motion-")
+        context = await browser.new_context(
+            storage_state=auth, viewport={"width": 1440, "height": 1050},
+            color_scheme="light", timezone_id="Asia/Taipei",
+            record_video_dir=video_dir.name, record_video_size={"width": 1440, "height": 1050},
+        )
+        page = await context.new_page()
+        page.on("pageerror", lambda e: errors.append(str(e)))
+        await page.goto(URL, wait_until="networkidle")
         sites = await get("/api/sites")
         sid = sites[0]["id"]
         base = f"/s/{sid}"
@@ -76,6 +94,16 @@ async def main():
         await point.focus()
         await page.keyboard.press("Enter")
         await expect(point).to_have_attribute("aria-pressed", "true")
+        await page.wait_for_timeout(360)
+        # Record a real return to the first event and keyboard move to the last.
+        first = page.locator(".journey-point").first
+        await first.click()
+        await page.wait_for_timeout(360)
+        await page.keyboard.press("End")
+        await expect(page.locator(".journey-point").last).to_be_focused()
+        await page.wait_for_timeout(360)
+        await point.click()
+        await page.wait_for_timeout(360)
         await expect(page.locator(".focus-description code")).to_have_text(target["path"] or "未附頁面路徑")
         await expect(page.locator(".focus-description strong")).to_have_text(target["title"] or target["path"] if target["type"] == "pageview" else target["name"])
         await expect(page.get_by_label("選擇來訪")).to_have_value(session)
@@ -108,6 +136,19 @@ async def main():
         await page.evaluate("scrollTo(0,0)")
         await settle(page)
         await page.screenshot(path=str(OUT / "workflow-03.png"), animations="disabled")
+        # Finish the desktop demonstration before mobile viewport checks.
+        desktop_video = page.video
+        location = page.url
+        auth = await context.storage_state()
+        await context.close()
+        await desktop_video.save_as(str(OUT / "feature-motion.webm"))
+        context = await browser.new_context(storage_state=auth, viewport={"width": 1440, "height": 1050}, timezone_id="Asia/Taipei")
+        page = await context.new_page()
+        page.on("pageerror", lambda e: errors.append(str(e)))
+        await page.goto(location, wait_until="networkidle")
+        await page.emulate_media(reduced_motion="reduce")
+        assert await page.locator(".journey-cursor").evaluate("e => getComputedStyle(e).transitionDuration") == "0s"
+        assert await page.locator(".journey-focus").evaluate("e => getComputedStyle(e).animationName") == "none"
         await page.set_viewport_size({"width": 390, "height": 844})
         await settle(page)
         await page.get_by_label("選擇來訪").select_option(session)
@@ -119,6 +160,8 @@ async def main():
         await page.get_by_label("選擇來訪").select_option(session)
         await settle(page)
         assert not errors, errors
+        await context.close()
+        video_dir.cleanup()
         await browser.close()
         print(f"PASS: visitor #{pid}, {session}, event #{target['id']} stay consistent across 3 frames; {len(all_events)} profile events verified; keyboard/mobile no overflow or page errors; read-only.")
 

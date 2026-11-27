@@ -1,0 +1,48 @@
+{
+  "core_source_sha256": "950710417855acd38c245c50c1facb6e456b45df9c6be2c6fb804f1f7a47082a",
+  "core_schema_sha256": "5a6dfc0ee83c70fce2cb884cbd1541f5ab8e49487cea76ae009a86f10fc26157",
+  "demo_data": true,
+  "mock_providers": true,
+  "operation": "get_site_overview",
+  "api_success_delta": 2,
+  "mcp_success_delta": 1,
+  "credential_id": "v-IUH2q820bIFZjBeGqm6DVd3SlJrEIVK6Z2QhqdHJw",
+  "revocation_denied": true,
+  "mock_checks": [
+    "unbound identity cannot create an account",
+    "GitHub and signed Google mock OIDC bound to the existing account",
+    "provider login issues the original host cookie and same user id",
+    "native immutable consent deny and approve preserve state",
+    "PKCE exchange and resource-bound OAuth token call a real domain operation",
+    "revoked application token is rejected immediately",
+    "unlink preserves local password login"
+  ],
+  "views": [
+    {
+      "theme": "light",
+      "width": 1440,
+      "overflow": false,
+      "style_issues": []
+    },
+    {
+      "theme": "light",
+      "width": 390,
+      "overflow": false,
+      "style_issues": []
+    },
+    {
+      "theme": "dark",
+      "width": 1440,
+      "overflow": false,
+      "style_issues": []
+    },
+    {
+      "theme": "dark",
+      "width": 390,
+      "overflow": false,
+      "style_issues": []
+    }
+  ],
+  "page_errors": [],
+  "notifications": 0
+}

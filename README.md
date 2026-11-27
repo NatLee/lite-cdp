@@ -38,7 +38,11 @@ Lite CDP 是一個自己架的小型顧客資料平台。在網站上貼一行�
 
 ![步驟三：同一位訪客的個人時間軸，保留相同來訪與事件](docs/images/workflow-03.png)
 
+[觀看同一次來訪的事件游標與詳情切換（WebM）](docs/images/feature-motion.webm)。游標依實際選取事件以 180 ms 移動，詳情同步呈現原始時間與屬性；可用方向鍵、Home、End 選事件。節點等距只表示順序。系統啟用「減少動態」時游標與詳情立即到位，鍵盤焦點仍保留。
+
 前兩張是 1440 px 桌面視窗內的航圖元件裁切；第三張為完整視窗。重拍與資料一致性檢查見 [操作驗證](docs/workflow-verification.md) 與 [capture-workflow.py](docs/capture-workflow.py)。腳本只讀取 demo 資料。
+
+新版來源樣式、桌面／手機檢查與錄影驗證見 [主題動態驗證](docs/themed-motion-verification.md)。
 
 ## 功能
 
@@ -58,7 +62,7 @@ Lite CDP 是一個自己架的小型顧客資料平台。在網站上貼一行�
 
 ## 畫面與工作流程
 
-以墨藍、鈷藍與青色構成「Journey Observatory / 顧客行為航圖」：網站切換和功能導覽位於上方，保留完整寬度給名單、身份與行為時間軸。所有數字來自 API；截圖使用內建虛構 demo 資料。
+以墨藍與同色系淺藍構成「Journey Observatory / 顧客行為航圖」：網站切換和功能導覽位於上方，保留完整寬度給名單、身份與行為時間軸。所有數字來自 API；截圖使用內建虛構 demo 資料。
 
 ### 從一次來訪開始
 
@@ -106,13 +110,13 @@ cd lite-cdp
 docker compose up -d --build
 ```
 
-打開 <http://localhost:8585>，第一次會請你建立管理員帳號。接著：
+打開 <http://127.0.0.1:8585>，第一次會請你建立管理員帳號。接著：
 
 1. 到「所有網站」新增一個網站。
 2. 「安裝與設定」頁有一行追蹤程式碼，貼進網站每一頁的 `<head>`：
 
    ```html
-   <script async src="http://localhost:8585/t.js" data-key="你的追蹤金鑰"></script>
+   <script async src="http://127.0.0.1:8585/t.js" data-key="你的追蹤金鑰"></script>
    ```
 
 3. 打開你的網站逛幾頁，回到「名單」就會看到一個匿名訪客。
@@ -213,14 +217,14 @@ Lite CDP 存的是個人資料，請照你所在地的法規告知訪客並取�
 
 ## 開發
 
-需要 Rust（stable）、Node 24、pnpm。
+需要 Rust（stable）、Node 24、pnpm。開發固定使用 `http://127.0.0.1:5173`；後端的 `ACCESS_PUBLIC_URL` 必須與前端相同。若另設 `CDP_PUBLIC_URL`，也必須同 origin。
 
 ```bash
 # 後端：http://127.0.0.1:8585
-cd src/api && cargo run
+cd src/api && ACCESS_PUBLIC_URL=http://127.0.0.1:5173 cargo run
 
-# 前端：http://localhost:5173，/api、/collect 和 /t.js 會轉給後端
-cd src/web && pnpm install && pnpm dev
+# 前端：http://127.0.0.1:5173，/api、/collect 和 /t.js 會轉給後端
+cd src/web && pnpm install && pnpm dev --host 127.0.0.1 --port 5173 --strictPort
 ```
 
 ```bash
@@ -238,3 +242,7 @@ API 和收資料的格式在 [docs/api.md](docs/api.md)。
 ## 授權
 
 [MIT](LICENSE) © Nat Lee
+
+## 帳號綁定、OAuth、API 與 MCP
+
+原生「連線與存取」可綁定 GitHub／Google、建立與撤銷金鑰、管理應用授權及核對真正用量。`reports:read` 只讀取站台與彙總報表；`people:read` 才能讀取個人事件、完整事件網址與屬性。建立金鑰預設不含個人事件，需另外勾選。 設定與協定見 [存取指南](docs/access.md)，本機真實操作見 [錄影](docs/images/access-workflow.webm) 與 [稽核截圖](docs/images/access-03-usage.png)。

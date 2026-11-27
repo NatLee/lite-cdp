@@ -129,7 +129,7 @@ export function Sites() {
               </div>
               <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-zinc-100 pt-3 text-xs text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
                 <span className="inline-flex min-w-0 items-center gap-1">
-                  <Users className="size-3.5 shrink-0" />
+                  <Users className="size-4 shrink-0" />
                   <span className="truncate">
                     {site.members.length === 0 ? "只有管理員看得到" : site.members.map((m) => m.display_name).join("、")}
                   </span>

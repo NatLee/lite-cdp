@@ -1,5 +1,5 @@
 import { ArrowRight, Crosshair, Navigation, Radio } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Link } from "react-router";
 import { api } from "../api";
 import { EVENT_LABEL, dateTime, personName, timeAgo } from "../lib/format";
@@ -39,6 +39,7 @@ export function sessionGroups(events: TimelineEvent[]) {
 }
 
 export function JourneyMap({ events }: { events: TimelineEvent[] }) {
+  const detailId = useId();
   const groups = sessionGroups(events);
   const [session, setSession] = useState("");
   const [focus, setFocus] = useState<number | null>(null);
@@ -52,11 +53,12 @@ export function JourneyMap({ events }: { events: TimelineEvent[] }) {
   });
   if (!selected || !current)
     return <div className="journey-empty">這位訪客還沒有事件紀錄。</div>;
+  const selectedPoint = point(selected, items.indexOf(selected));
   return (
     <div className="journey-map">
       <div className="journey-controls">
         <label>
-          <span>SESSION / 選擇一次來訪</span>
+          <span>02 / 單次來訪足跡</span>
           <select
             aria-label="選擇來訪"
             value={current.id}
@@ -104,12 +106,6 @@ export function JourneyMap({ events }: { events: TimelineEvent[] }) {
         >
           <div className="journey-canvas" style={{ width }}>
             <svg viewBox={`0 0 ${width} 292`} aria-hidden="true">
-              <defs>
-                <linearGradient id="route-stroke">
-                  <stop stopColor="#37c8e8" />
-                  <stop offset="1" stopColor="#739aff" />
-                </linearGradient>
-              </defs>
               {[42, 136, 230].map((y) => (
                 <line
                   key={y}
@@ -129,7 +125,7 @@ export function JourneyMap({ events }: { events: TimelineEvent[] }) {
                   })
                   .join(" ")}
                 fill="none"
-                stroke="url(#route-stroke)"
+                stroke="#86b9eb"
                 strokeWidth="2"
               />
               {items.map((event, i) => {
@@ -139,14 +135,19 @@ export function JourneyMap({ events }: { events: TimelineEvent[] }) {
                     key={event.id}
                     cx={p.x}
                     cy={p.y}
-                    r={selected.id === event.id ? 15 : 9}
+                    r={9}
                     fill="#0a1d33"
-                    stroke={selected.id === event.id ? "#b6f5ff" : "#438eaf"}
+                    stroke="#6895c4"
                     strokeWidth="1"
                   />
                 );
               })}
             </svg>
+            <span
+              className="journey-cursor"
+              aria-hidden="true"
+              style={{ transform: `translate(${selectedPoint.x - 16}px, ${selectedPoint.y - 16}px)` }}
+            />
             {items.map((event, i) => {
               const p = point(event, i);
               return (
@@ -155,8 +156,18 @@ export function JourneyMap({ events }: { events: TimelineEvent[] }) {
                   className={`journey-point event-${event.type}`}
                   style={{ left: p.x, top: p.y }}
                   aria-pressed={selected.id === event.id}
+                  aria-controls={detailId}
                   aria-label={`${i + 1}. ${EVENT_LABEL[event.type]} ${event.type === "pageview" ? event.title || event.path : event.name || EVENT_LABEL[event.type]} ${clock(event.created_at)}`}
                   onClick={() => setFocus(event.id)}
+                  onKeyDown={(e) => {
+                    const next = e.key === "ArrowRight" ? Math.min(i + 1, items.length - 1)
+                      : e.key === "ArrowLeft" ? Math.max(i - 1, 0)
+                      : e.key === "Home" ? 0 : e.key === "End" ? items.length - 1 : null;
+                    if (next === null) return;
+                    e.preventDefault();
+                    setFocus(items[next].id);
+                    e.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>(".journey-point")[next]?.focus();
+                  }}
                 >
                   <span className="point-cross">
                     {String(i + 1).padStart(2, "0")}
@@ -176,14 +187,14 @@ export function JourneyMap({ events }: { events: TimelineEvent[] }) {
           </div>
         </div>
       </div>
-      <div className="journey-focus" aria-live="polite">
+      <section id={detailId} className="journey-focus" key={selected.id} aria-label="事件詳情" aria-live="polite">
         <div className="focus-cross">
-          <Crosshair size={22} />
-          <span>EVENT FOCUS</span>
+          <Crosshair size={20} />
+          <span>03 / 事件詳情</span>
         </div>
         <div className="focus-description">
           <span>
-            {EVENT_LABEL[selected.type]} · {dateTime(selected.created_at)}
+            {EVENT_LABEL[selected.type]} · #{selected.id} · {dateTime(selected.created_at)}
           </span>
           <strong>
             {selected.type === "pageview"
@@ -211,7 +222,7 @@ export function JourneyMap({ events }: { events: TimelineEvent[] }) {
             </dd>
           </div>
         </dl>
-      </div>
+      </section>
       <p className="journey-footnote">
         <span>
           <i /> 記錄的事件順序 · 節點等距，非時間比例
@@ -269,7 +280,7 @@ export function JourneyExplorer({ siteId }: { siteId: number }) {
           <p>選一位訪客，沿著真實事件，讀懂這次來訪。</p>
         </div>
         <span className="observatory-coordinate">
-          <Navigation size={25} />
+          <Navigation size={24} />
           <span>
             OBSERVE
             <br />
@@ -280,8 +291,8 @@ export function JourneyExplorer({ siteId }: { siteId: number }) {
       <div className="observatory-body">
         <aside className="visitor-selector">
           <div className="visitor-selector-title">
-            <Radio size={13} />
-            <span>最近出現 · 最多 6 位訪客</span>
+            <Radio size={16} />
+            <span>01 / 訪客索引 · 最近 6 位</span>
           </div>
           {people.error && <ErrorBanner message={people.error} />}{" "}
           {!people.data && !people.error && <p role="status">正在讀取訪客…</p>}
@@ -301,11 +312,11 @@ export function JourneyExplorer({ siteId }: { siteId: number }) {
                   {timeAgo(person.last_seen)}
                 </small>
               </span>
-              <ArrowRight size={13} />
+              <ArrowRight size={16} />
             </button>
           ))}
           <Link to={`/s/${siteId}/people`}>
-            完整訪客名單 <ArrowRight size={13} />
+            完整訪客名單 <ArrowRight size={16} />
           </Link>
         </aside>
         <div className="observatory-route">
@@ -316,7 +327,7 @@ export function JourneyExplorer({ siteId }: { siteId: number }) {
                   正在觀測 <b>{personName(selected)}</b>
                 </span>
                 <Link to={`/s/${siteId}/people/${selected.id}`}>
-                  開啟個人旅程 <ArrowRight size={13} />
+                  開啟個人旅程 <ArrowRight size={16} />
                 </Link>
               </div>
               <VisitorJourney

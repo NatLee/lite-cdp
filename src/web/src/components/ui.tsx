@@ -17,9 +17,9 @@ export function ErrorBanner({ message }: { message: string }) {
   return (
     <div
       role="alert"
-      className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950/50 dark:text-rose-200"
+      className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800 dark:border-rose-900 dark:bg-rose-950/50 dark:text-rose-200"
     >
-      <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+      <AlertTriangle className="mt-1 size-4 shrink-0" />
       <span>{message}</span>
     </div>
   );
@@ -36,10 +36,10 @@ export function Empty({
 }) {
   return (
     <div className="flex flex-col items-center gap-3 px-6 py-14 text-center">
-      <div className="grid size-12 place-items-center rounded-2xl bg-brand-50 text-brand-600 dark:bg-brand-950 dark:text-brand-300">
+      <div className="grid size-12 place-items-center rounded-lg bg-brand-50 text-brand-600 dark:bg-brand-950 dark:text-brand-300">
         <Icon className="size-6" />
       </div>
-      <p className="font-medium">{title}</p>
+      <p className="font-semibold">{title}</p>
       {children && <div className="max-w-md text-sm text-zinc-500 dark:text-zinc-400">{children}</div>}
     </div>
   );
@@ -62,7 +62,7 @@ export function Badge({ tone = "neutral", children, title }: { tone?: BadgeTone;
   return (
     <span
       title={title}
-      className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium whitespace-nowrap ${BADGE_TONES[tone]}`}
+      className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-semibold whitespace-nowrap ${BADGE_TONES[tone]}`}
     >
       {children}
     </span>
@@ -110,17 +110,17 @@ export function Dialog({
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 sm:pt-20">
-      <div className="absolute inset-0 bg-zinc-950/40 backdrop-blur-[2px]" onClick={onClose} />
+      <div className="absolute inset-0 bg-zinc-950/40 -[2px]" onClick={onClose} />
       <div
         ref={ref}
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={`card relative w-full ${wide ? "max-w-2xl" : "max-w-md"} p-5 shadow-xl`}
+        className={`card relative w-full ${wide ? "max-w-2xl" : "max-w-md"} p-5 `}
       >
         <div className="mb-4 flex items-center justify-between gap-2">
           <h2 className="font-semibold">{title}</h2>
-          <button className="btn btn-ghost -mr-2 px-1.5" onClick={onClose} aria-label="關閉">
+          <button className="btn btn-ghost -mr-2 px-2" onClick={onClose} aria-label="關閉">
             <X className="size-4" />
           </button>
         </div>
@@ -157,7 +157,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div
             key={t.id}
             role="status"
-            className={`pointer-events-auto max-w-sm rounded-xl px-4 py-2.5 text-sm shadow-lg ${
+            className={`pointer-events-auto max-w-sm rounded-lg px-4 py-3 text-sm  ${
               t.tone === "error"
                 ? "bg-rose-600 text-white"
                 : "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
