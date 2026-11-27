@@ -29,6 +29,8 @@ Tests use disposable SQLite databases, a local fictitious shop, generated test c
 - [Editable SVG cover](images/cover.svg), [cover preview](images/cover-preview.png), [identity lab](images/signal-identity-light.png), [dark lab](images/signal-identity-dark.png), [mobile lab](images/signal-identity-mobile.png), [framework teaching](images/signal-install-light.png).
 - README overview/people/person/labels/segment/install/journey/mobile screenshots were refreshed from the same current build. Old `workflow-*` images and their older verification documents remain historical artifacts; README now features Signal Console captures.
 
+Cover cleanup: removed the obscured line segment that protruded 6 px beyond the member-ID card. The exact SVG was rendered in Chrome and visually checked at 1440 × 720 and a 900 × 450 README size; `cover-preview.png` was refreshed from the full-size render. The two-browser identity schematic and all text remain unchanged. This vector-only correction did not require application tests.
+
 ```sh
 CARGO_BUILD_JOBS=2 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 \
   cargo test --manifest-path src/api/Cargo.toml -- --test-threads=2
