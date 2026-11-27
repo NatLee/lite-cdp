@@ -110,13 +110,13 @@ cd lite-cdp
 docker compose up -d --build
 ```
 
-打開 <http://localhost:8585>，第一次會請你建立管理員帳號。接著：
+打開 <http://127.0.0.1:8585>，第一次會請你建立管理員帳號。接著：
 
 1. 到「所有網站」新增一個網站。
 2. 「安裝與設定」頁有一行追蹤程式碼，貼進網站每一頁的 `<head>`：
 
    ```html
-   <script async src="http://localhost:8585/t.js" data-key="你的追蹤金鑰"></script>
+   <script async src="http://127.0.0.1:8585/t.js" data-key="你的追蹤金鑰"></script>
    ```
 
 3. 打開你的網站逛幾頁，回到「名單」就會看到一個匿名訪客。
@@ -217,14 +217,14 @@ Lite CDP 存的是個人資料，請照你所在地的法規告知訪客並取�
 
 ## 開發
 
-需要 Rust（stable）、Node 24、pnpm。
+需要 Rust（stable）、Node 24、pnpm。開發固定使用 `http://127.0.0.1:5173`；後端的 `ACCESS_PUBLIC_URL` 必須與前端相同。若另設 `CDP_PUBLIC_URL`，也必須同 origin。
 
 ```bash
 # 後端：http://127.0.0.1:8585
-cd src/api && cargo run
+cd src/api && ACCESS_PUBLIC_URL=http://127.0.0.1:5173 cargo run
 
-# 前端：http://localhost:5173，/api、/collect 和 /t.js 會轉給後端
-cd src/web && pnpm install && pnpm dev
+# 前端：http://127.0.0.1:5173，/api、/collect 和 /t.js 會轉給後端
+cd src/web && pnpm install && pnpm dev --host 127.0.0.1 --port 5173 --strictPort
 ```
 
 ```bash
@@ -242,3 +242,7 @@ API 和收資料的格式在 [docs/api.md](docs/api.md)。
 ## 授權
 
 [MIT](LICENSE) © Nat Lee
+
+## 帳號綁定、OAuth、API 與 MCP
+
+原生「連線與存取」可綁定 GitHub／Google、建立與撤銷金鑰、管理應用授權及核對真正用量。`reports:read` 只讀取站台與彙總報表；`people:read` 才能讀取個人事件、完整事件網址與屬性。建立金鑰預設不含個人事件，需另外勾選。 設定與協定見 [存取指南](docs/access.md)，本機真實操作見 [錄影](docs/images/access-workflow.webm) 與 [稽核截圖](docs/images/access-03-usage.png)。

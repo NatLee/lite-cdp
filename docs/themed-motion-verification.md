@@ -1,6 +1,6 @@
 # 顧客足跡航圖：主題動態驗證
 
-2026-11-27。僅前端階段；原有 API、登入、角色、網站／資料權限沒有修改。帳號 OAuth（GitHub、Google）與 MCP/API OAuth 已由使用者選定，另依 root 的存取合約實作；本提交沒有連線空頁、假用量或授權功能。
+2026-11-27。此檔記錄先前已完成的前端階段。後續 GitHub／Google 綁定、OAuth、API／MCP 與真實用量已整合；請另見 [存取驗證](access-verification.md) 與 [存取指南](access.md)。
 
 ## 來源與視覺規則
 

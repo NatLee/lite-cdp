@@ -1,6 +1,8 @@
 # API
 
-兩組網址：
+對外 `POST /api/v1/{operation}`、`/mcp` 與 OAuth 的 scopes、Bearer 和真實用量語義見 [存取指南](access.md)。下列既有管理 API 使用原 HttpOnly cookie；Bearer 不可用來管理帳號或綁定。
+
+網址分工：
 
 - `/collect` 和 `/t.js`：收追蹤資料的公開網址和追蹤程式碼，不用登入，別的網站的瀏覽器會直接連過來。
 - `/api/...`：管理介面用的 API，要先登入（HttpOnly cookie `cdp_session`）。
