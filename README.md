@@ -32,13 +32,15 @@ Signal Console 用石墨黑、暖白與橄欖色呈現三件事：**送進來什
 
 ![框架安裝與同意／登入生命週期教學](docs/images/signal-install-light.png)
 
-### 3. 看實際回執，再追蹤旅程
+### 3. 按來訪閱讀正式事件
 
-建立 15 分鐘的安裝測試碼，在被追蹤網站載入測試 snippet，回來取得 collector 回執。它會顯示清理後的事件、來源和身分簽署狀態，**不建立人物或增加瀏覽數**。正式事件進入旅程後，可按 session 與事件種類閱讀每一步。
+從最近訪客選一人，再選一次來訪；下圖以實際 `session_id` 分組，將瀏覽、互動與辨識排列成事件路徑。點節點查看時間、頁面與屬性；等距節點表示先後順序，不代表時間長度。
 
 ![以實際 session 分組的顧客旅程](docs/images/screenshot-journey-dark.png)
 
-[追蹤與整合契約](docs/tracking.md) · [驗證與重拍方式](docs/signal-console-verification.md)
+正式採集前，也可建立 15 分鐘安裝測試碼、在被追蹤網站載入測試 snippet，再回來檢查 collector 回執。回執顯示清理後的事件、來源和身分簽署狀態，**不建立人物或增加瀏覽數**；操作與排錯見 [安裝回執步驟](docs/tracking.md#real-installation-receipt)。上圖呈現的是正式事件旅程。
+
+[圖解操作與整合指南](docs/tracking.md#illustrated-walkthrough) · [驗證與重拍方式](docs/signal-console-verification.md)
 
 ## 功能
 
