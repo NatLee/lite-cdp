@@ -17,6 +17,7 @@ class SnapshotTests(unittest.TestCase):
             (root/'src/lib.rs').write_text('original')
             (root/'migrations/0001_access.sql').write_text('schema')
             first=snapshot.manifest(root)
+            self.assertEqual(first['schema_version'],1)
             self.assertEqual(first,snapshot.manifest(root))
             (root/'SNAPSHOT.json').write_text(json.dumps(first))
             self.assertEqual(snapshot.check(root),first)
@@ -34,5 +35,29 @@ class SnapshotTests(unittest.TestCase):
             root=Path(tmp);(root/'outside').mkdir()
             (root/'src').symlink_to(root/'outside',target_is_directory=True)
             with self.assertRaises(ValueError):snapshot.source_files(root)
+
+    def test_destination_symlink_and_parent_are_rejected_without_mutation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp).resolve();target=root/'real';target.mkdir()
+            sentinel=target/'keep';sentinel.write_text('build artifact')
+            crates=root/'host/crates';crates.mkdir(parents=True)
+            destination=crates/'access-kit';destination.symlink_to(target,target_is_directory=True)
+            with self.assertRaises(ValueError):snapshot.destination_path(destination)
+            self.assertEqual(sentinel.read_text(),'build artifact')
+            destination.unlink();crates.rmdir();crates.symlink_to(target,target_is_directory=True)
+            with self.assertRaises(ValueError):snapshot.destination_path(crates/'access-kit')
+            self.assertEqual(sentinel.read_text(),'build artifact')
+
+    def test_additive_schema_upgrade_keeps_previous_snapshot_verifiable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);(root/'src').mkdir();(root/'migrations').mkdir()
+            (root/'src/lib.rs').write_text('source')
+            (root/'migrations/0001_access.sql').write_text('base')
+            old=snapshot.manifest(root);(root/'SNAPSHOT.json').write_text(json.dumps(old))
+            self.assertEqual(snapshot.check(root)['schema_version'],1)
+            (root/'migrations/0002_client_registration.sql').write_text('upgrade')
+            new=snapshot.manifest(root)
+            self.assertEqual(new['schema_version'],2)
+            self.assertNotEqual(old['schema_sha256'],new['schema_sha256'])
 
 if __name__ == '__main__':unittest.main()

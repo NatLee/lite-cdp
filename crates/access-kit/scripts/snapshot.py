@@ -28,7 +28,7 @@ def source_files(root):
 def manifest(root):
     files = {p.relative_to(root).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in source_files(root)}
     source = ''.join(f'{path}:{digest}\n' for path,digest in files.items()).encode()
-    return {'package':'access-kit','version':'0.1.0','schema_version':1,'source_sha256':hashlib.sha256(source).hexdigest(),'schema_sha256':files['migrations/0001_access.sql'],'files':files}
+    return {'package':'access-kit','version':'0.1.0','schema_version':max(int(Path(p).name.split('_',1)[0]) for p in files if p.startswith('migrations/') and p.endswith('.sql')),'source_sha256':hashlib.sha256(source).hexdigest(),'schema_sha256':hashlib.sha256(b''.join((root / p).read_bytes() for p in files if p.startswith('migrations/') and p.endswith('.sql'))).hexdigest(),'files':files}
 
 def check(root):
     expected = json.loads((root / 'SNAPSHOT.json').read_text())
@@ -36,6 +36,14 @@ def check(root):
     if actual != expected:
         raise ValueError('Snapshot content/hash mismatch')
     return actual
+
+def destination_path(destination):
+    if not destination.is_absolute() or destination.name != 'access-kit' or destination.parent.name != 'crates':
+        raise ValueError('Destination must be an absolute host/crates/access-kit path')
+    # Validate the lexical path before resolving; resolve() erases symlink evidence.
+    if any(path.is_symlink() for path in (destination, *destination.parents)):
+        raise ValueError('Destination and its ancestors must not be symlinks; use a physical path')
+    return destination.resolve()
 
 def main():
     parser = argparse.ArgumentParser()
@@ -47,7 +55,7 @@ def main():
         (ROOT / 'SNAPSHOT.json').write_text(json.dumps(manifest(ROOT),indent=2,sort_keys=True)+'\n')
     result = check(ROOT)
     if args.destination:
-        target = args.destination.resolve()
+        target = destination_path(args.destination)
         if not args.destination.is_absolute() or target.name != "access-kit" or target.parent.name != "crates":
             raise ValueError("Destination must be an absolute host/crates/access-kit path")
         if target == ROOT or target.is_relative_to(ROOT):

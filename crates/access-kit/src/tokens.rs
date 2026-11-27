@@ -36,8 +36,7 @@ pub(crate) async fn exchange(
             "Unsupported token parameter",
         ));
     }
-    let client = required(&b, "client_id")?;
-    kit.rate(format!("token:{}", hash(client)), 30)?;
+    required(&b, "client_id")?;
     match required(&b, "grant_type")? {
         "authorization_code" => code(kit, &b).await,
         "refresh_token" => refresh(kit, &b).await,
@@ -90,6 +89,7 @@ async fn code(kit: &AccessKit, b: &HashMap<String, String>) -> Result<Value, Acc
     if kit.0.host.active_principal(user).await?.is_none() {
         return Err(invalid());
     }
+    kit.rate(format!("token-user:{user}"), 30)?;
     let scopes: String = r.get("scopes");
     let id = random();
     let expiry = now() + 30 * 86400;
@@ -159,6 +159,7 @@ async fn refresh(kit: &AccessKit, b: &HashMap<String, String>) -> Result<Value, 
     if !grant_active {
         return Err(invalid());
     }
+    kit.rate(format!("token-user:{}", r.get::<i64, _>("user_id")), 30)?;
     let response = issue(
         &mut tx,
         &id,

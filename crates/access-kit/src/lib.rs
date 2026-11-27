@@ -9,8 +9,11 @@ pub use types::{
     CookieSession, DomainOperation, Host, HostFuture, HostPaths, Invocation, Principal, Role,
     Transport, TrustedPrincipal,
 };
-pub const SCHEMA_SQL: &str = include_str!("../migrations/0001_access.sql");
-pub const SCHEMA_VERSION: u32 = 1;
+pub const SCHEMA_SQL: &str = concat!(
+    include_str!("../migrations/0001_access.sql"),
+    include_str!("../migrations/0002_client_registration.sql")
+);
+pub const SCHEMA_VERSION: u32 = 2;
 mod audit;
 mod authorization;
 mod clients;
@@ -39,6 +42,7 @@ pub(crate) struct Inner {
     pub host: Arc<dyn Host>,
     pub operations: BTreeMap<&'static str, Registered>,
     pub limits: Mutex<HashMap<String, (i64, u32)>>,
+    pub public_limits: Mutex<HashMap<String, (i64, u32)>>,
     pub http: reqwest::Client,
 }
 impl AccessKit {
@@ -102,6 +106,7 @@ impl AccessKit {
             host,
             operations,
             limits: Mutex::new(HashMap::new()),
+            public_limits: Mutex::new(HashMap::new()),
             http,
         }));
         let weak = Arc::downgrade(&kit.0);
@@ -137,14 +142,29 @@ impl AccessKit {
         Ok(())
     }
     pub(crate) fn rate(&self, key: String, max: u32) -> Result<(), AccessError> {
+        Self::rate_in(&self.0.limits, key, max, None)
+    }
+    pub(crate) fn public_rate(&self, key: String, max: u32) -> Result<(), AccessError> {
+        let namespace = key.split(':').next().unwrap_or("").to_owned();
+        Self::rate_in(&self.0.public_limits, key, max, Some(&namespace))
+    }
+    fn rate_in(
+        buckets: &Mutex<HashMap<String, (i64, u32)>>,
+        key: String,
+        max: u32,
+        namespace: Option<&str>,
+    ) -> Result<(), AccessError> {
         let now = crypto::now();
-        let mut limits = self
-            .0
-            .limits
-            .lock()
-            .map_err(|_| AccessError::unavailable())?;
+        let mut limits = buckets.lock().map_err(|_| AccessError::unavailable())?;
         limits.retain(|_, (at, _)| now - *at < 60);
-        if !limits.contains_key(&key) && limits.len() >= 4096 {
+        let occupied = match namespace {
+            Some(prefix) => limits
+                .keys()
+                .filter(|key| key.split(':').next() == Some(prefix))
+                .count(),
+            None => limits.len(),
+        };
+        if !limits.contains_key(&key) && occupied >= 4096 {
             return Err(AccessError::new(
                 axum::http::StatusCode::TOO_MANY_REQUESTS,
                 "rate_limited",

@@ -350,7 +350,7 @@ async fn audit_reserve_and_finalize_fail_closed_then_restart_recovers() {
         .execute(&db)
         .await
         .unwrap();
-    sqlx::query("UPDATE access_events SET at=at-121")
+    sqlx::query("UPDATE access_events SET at=at-601")
         .execute(&db)
         .await
         .unwrap();
@@ -519,7 +519,7 @@ async fn interrupted_call_recovery_and_utc_zero_days() {
     }
     task.abort();
     let _ = task.await;
-    sqlx::query("UPDATE access_events SET at=at-121")
+    sqlx::query("UPDATE access_events SET at=at-601")
         .execute(&db)
         .await
         .unwrap();

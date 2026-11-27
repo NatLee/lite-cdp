@@ -348,3 +348,51 @@ async fn foreign_client_cannot_revoke_other_grant_and_revocation_is_immediate() 
         assert_eq!(count, expected);
     }
 }
+
+#[tokio::test]
+async fn invalid_requests_for_a_known_client_preserve_valid_code_exchange() {
+    let kit = AccessKit::new(
+        support::database().await,
+        AccessConfig::for_origin("http://127.0.0.1:9999").unwrap(),
+        support::TestHost::new(),
+    )
+    .await
+    .unwrap();
+    let app = kit.router();
+    let client = client(&app).await;
+    let code = code(&app, &client).await;
+    for _ in 0..31 {
+        assert_eq!(
+            token(
+                &app,
+                &[
+                    ("grant_type", "authorization_code"),
+                    ("client_id", &client),
+                    ("code", "invalid"),
+                    ("redirect_uri", "http://127.0.0.1:7777/callback"),
+                    ("resource", "http://127.0.0.1:9999/api/v1"),
+                    ("code_verifier", &"a".repeat(43))
+                ]
+            )
+            .await
+            .0,
+            StatusCode::BAD_REQUEST
+        );
+    }
+    assert_eq!(
+        token(
+            &app,
+            &[
+                ("grant_type", "authorization_code"),
+                ("client_id", &client),
+                ("code", &code),
+                ("redirect_uri", "http://127.0.0.1:7777/callback"),
+                ("resource", "http://127.0.0.1:9999/api/v1"),
+                ("code_verifier", &"a".repeat(43))
+            ]
+        )
+        .await
+        .0,
+        StatusCode::OK
+    );
+}

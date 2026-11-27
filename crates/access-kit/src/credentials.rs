@@ -49,7 +49,14 @@ pub(crate) async fn cookie(
     {
         return Err(AccessError::unauthorized());
     }
-    kit.rate(format!("management:{}", session.principal.user_id), 60)?;
+    kit.rate(
+        format!(
+            "management-{}:{}",
+            if write { "write" } else { "read" },
+            session.principal.user_id
+        ),
+        if write { 60 } else { 240 },
+    )?;
     Ok(session)
 }
 pub(crate) fn same_origin(kit: &AccessKit, h: &HeaderMap) -> bool {

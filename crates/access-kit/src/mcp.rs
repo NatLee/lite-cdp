@@ -156,6 +156,7 @@ async fn guard(State(kit): State<AccessKit>, mut req: Request, next: Next) -> Re
                         let current = crate::types::AuditTicket {
                             id,
                             started: std::time::Instant::now(),
+                            domain_status: Arc::new(std::sync::atomic::AtomicU16::new(0)),
                         };
                         auth.audit_ticket = Some(current.clone());
                         ticket = Some(current);
@@ -170,8 +171,21 @@ async fn guard(State(kit): State<AccessKit>, mut req: Request, next: Next) -> Re
                 let (parts, body) = response.into_parts();
                 let bytes = match to_bytes(body, 4 * 1024 * 1024).await {
                     Ok(b) => b,
-                    Err(_) => return AccessError::unavailable().into_response(),
+                    Err(_) => {
+                        let _ = audit::finish(
+                            &kit.0.db,
+                            &ticket.id,
+                            503,
+                            ticket.started.elapsed().as_millis().min(i64::MAX as u128) as i64,
+                            false,
+                        )
+                        .await;
+                        return AccessError::unavailable().into_response();
+                    }
                 };
+                let domain_status = ticket
+                    .domain_status
+                    .load(std::sync::atomic::Ordering::Acquire);
                 let value = serde_json::from_slice::<Value>(&bytes).ok();
                 let failed = !status.is_success()
                     || value
@@ -180,7 +194,11 @@ async fn guard(State(kit): State<AccessKit>, mut req: Request, next: Next) -> Re
                 let outcome = if !status.is_success() {
                     status.as_u16()
                 } else if failed {
-                    400
+                    if domain_status >= 400 {
+                        domain_status
+                    } else {
+                        400
+                    }
                 } else {
                     200
                 };

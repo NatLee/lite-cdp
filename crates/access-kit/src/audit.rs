@@ -14,7 +14,7 @@ pub(crate) async fn reserve(
     let id = auth.request_id.clone();
     let at = now();
     let day = day(at);
-    let mut tx = db.begin().await?;
+    let mut tx = db.begin_with("BEGIN IMMEDIATE").await?;
     sqlx::query("INSERT INTO access_events(request_id,at,kind,transport,operation,user_id,client_id,credential_id,grant_id,status,outcome) VALUES(?,?,'operation',?,?,?,?,?,?,0,'pending')").bind(&id).bind(at).bind(transport.as_str()).bind(operation).bind(auth.principal.user_id).bind(&auth.client_id).bind(&auth.credential_id).bind(&auth.grant_id).execute(&mut *tx).await?;
     sqlx::query("INSERT INTO access_daily(day,user_id,transport,attempts,pending) VALUES(?,?,?,1,1) ON CONFLICT(day,user_id,transport) DO UPDATE SET attempts=attempts+1,pending=pending+1").bind(day).bind(auth.principal.user_id).bind(transport.as_str()).execute(&mut *tx).await?;
     tx.commit().await?;
@@ -27,7 +27,7 @@ pub(crate) async fn finish(
     duration: i64,
     interrupted: bool,
 ) -> Result<(), AccessError> {
-    let mut tx = db.begin().await?;
+    let mut tx = db.begin_with("BEGIN IMMEDIATE").await?;
     let row = sqlx::query(
         "SELECT at,user_id,transport FROM access_events WHERE request_id=? AND outcome='pending'",
     )
@@ -61,9 +61,9 @@ pub(crate) fn day(at: i64) -> String {
         .to_string()
 }
 pub(crate) async fn maintain(db: &SqlitePool) -> Result<(), AccessError> {
-    let rows=sqlx::query("SELECT request_id FROM access_events WHERE outcome='pending' AND at<=? ORDER BY at LIMIT 100").bind(now()-120).fetch_all(db).await?;
+    let rows=sqlx::query("SELECT request_id FROM access_events WHERE outcome='pending' AND at<=? ORDER BY at LIMIT 100").bind(now()-600).fetch_all(db).await?;
     for row in rows {
-        finish(db, &row.get::<String, _>("request_id"), 503, 120_000, true).await?;
+        finish(db, &row.get::<String, _>("request_id"), 503, 600_000, true).await?;
     }
     sqlx::query("DELETE FROM access_events WHERE id IN(SELECT id FROM access_events WHERE at<? AND outcome!='pending' LIMIT 1000)").bind(now()-90*86400).execute(db).await?;
     for table in ["access_provider_flows", "access_consents", "access_codes"] {

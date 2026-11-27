@@ -93,6 +93,7 @@ impl Transport {
 pub(crate) struct AuditTicket {
     pub id: String,
     pub started: std::time::Instant,
+    pub domain_status: std::sync::Arc<std::sync::atomic::AtomicU16>,
 }
 #[derive(Clone)]
 pub(crate) struct AuthContext {

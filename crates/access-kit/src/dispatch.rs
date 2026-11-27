@@ -81,14 +81,21 @@ pub(crate) async fn dispatch_result(
         .as_ref()
         .map(|_| 200)
         .unwrap_or_else(|e| e.status().as_u16());
-    audit::finish(
-        &kit.0.db,
-        &id,
-        status,
-        started.elapsed().as_millis().min(i64::MAX as u128) as i64,
-        false,
-    )
-    .await?;
+    if let Some(ticket) = &auth.audit_ticket {
+        // The MCP transport owns completion after the SDK response is collected.
+        ticket
+            .domain_status
+            .store(status, std::sync::atomic::Ordering::Release);
+    } else {
+        audit::finish(
+            &kit.0.db,
+            &id,
+            status,
+            started.elapsed().as_millis().min(i64::MAX as u128) as i64,
+            false,
+        )
+        .await?;
+    }
     result
 }
 fn depth(v: &Value) -> usize {

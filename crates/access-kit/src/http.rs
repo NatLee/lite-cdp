@@ -326,7 +326,8 @@ async fn clients_post(
     if s.principal.role != Role::Admin {
         return Err(AccessError::denied());
     }
-    let mut response = no_store(crate::clients::register(&kit, parse_json(&h, &body)?).await?);
+    let mut response =
+        no_store(crate::clients::register(&kit, parse_json(&h, &body)?, false).await?);
     *response.status_mut() = StatusCode::CREATED;
     Ok(response)
 }
@@ -337,7 +338,13 @@ async fn register(
     body: Bytes,
 ) -> Response {
     let result = async {
-        kit.rate(
+        if !kit.0.config.dynamic_client_registration {
+            return Err(AccessError::bad(
+                "registration_disabled",
+                "Use an administrator-registered client",
+            ));
+        }
+        kit.public_rate(
             format!(
                 "dcr:{}",
                 peer.as_ref()
@@ -346,7 +353,7 @@ async fn register(
             ),
             10,
         )?;
-        crate::clients::register(&kit, parse_json(&h, &body)?).await
+        crate::clients::register(&kit, parse_json(&h, &body)?, true).await
     }
     .await;
     oauth_response(result, true)
@@ -427,9 +434,26 @@ fn oauth_response(result: Result<Value, AccessError>, created: bool) -> Response
     );
     r
 }
-async fn token(State(kit): State<AccessKit>, h: HeaderMap, b: Bytes) -> Response {
+async fn token(
+    State(kit): State<AccessKit>,
+    peer: Option<Extension<ConnectInfo<std::net::SocketAddr>>>,
+    h: HeaderMap,
+    b: Bytes,
+) -> Response {
     oauth_response(
-        async { crate::tokens::exchange(&kit, form(&h, &b)?).await }.await,
+        async {
+            kit.public_rate(
+                format!(
+                    "token-peer:{}",
+                    peer.as_ref()
+                        .map(|p| p.0 .0.ip().to_string())
+                        .unwrap_or_else(|| "unknown-peer".into())
+                ),
+                120,
+            )?;
+            crate::tokens::exchange(&kit, form(&h, &b)?).await
+        }
+        .await,
         false,
     )
 }
@@ -459,9 +483,11 @@ async fn grant_revoke(
     Ok(StatusCode::NO_CONTENT)
 }
 async fn server_metadata(State(kit): State<AccessKit>) -> Json<Value> {
-    Json(
-        json!({"issuer":kit.0.config.origin.origin().ascii_serialization(),"authorization_endpoint":kit.0.config.url("/oauth/authorize"),"token_endpoint":kit.0.config.url("/oauth/token"),"revocation_endpoint":kit.0.config.url("/oauth/revoke"),"registration_endpoint":kit.0.config.url("/oauth/register"),"response_types_supported":["code"],"grant_types_supported":["authorization_code","refresh_token"],"token_endpoint_auth_methods_supported":["none"],"code_challenge_methods_supported":["S256"],"scopes_supported":kit.scopes()}),
-    )
+    let mut metadata = json!({"issuer":kit.0.config.origin.origin().ascii_serialization(),"authorization_endpoint":kit.0.config.url("/oauth/authorize"),"token_endpoint":kit.0.config.url("/oauth/token"),"revocation_endpoint":kit.0.config.url("/oauth/revoke"),"response_types_supported":["code"],"grant_types_supported":["authorization_code","refresh_token"],"token_endpoint_auth_methods_supported":["none"],"code_challenge_methods_supported":["S256"],"scopes_supported":kit.scopes()});
+    if kit.0.config.dynamic_client_registration {
+        metadata["registration_endpoint"] = json!(kit.0.config.url("/oauth/register"));
+    }
+    Json(metadata)
 }
 async fn mcp_metadata(State(kit): State<AccessKit>) -> Json<Value> {
     resource_metadata(&kit, "/mcp")
@@ -508,10 +534,20 @@ async fn identity_link(
 }
 async fn provider_login(
     State(kit): State<AccessKit>,
+    peer: Option<Extension<ConnectInfo<std::net::SocketAddr>>>,
     Path(provider): Path<String>,
     h: HeaderMap,
     Query(q): Query<HashMap<String, String>>,
 ) -> Result<Response, AccessError> {
+    kit.public_rate(
+        format!(
+            "provider-peer:{}",
+            peer.as_ref()
+                .map(|p| p.0 .0.ip().to_string())
+                .unwrap_or_else(|| "unknown-peer".into())
+        ),
+        30,
+    )?;
     match crate::providers::start(
         &kit,
         &provider,

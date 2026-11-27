@@ -153,7 +153,7 @@ pub(crate) async fn start(
     };
     let browser = authorization::browser(h).unwrap_or_else(random);
     let bh = hash(&browser);
-    kit.rate(format!("provider:{bh}"), 10)?;
+    kit.public_rate(format!("provider:{bh}"), 10)?;
     let pending:i64=sqlx::query_scalar("SELECT COUNT(*) FROM access_provider_flows WHERE expires_at>? AND used_at IS NULL AND browser_hash=?").bind(now()).bind(&bh).fetch_one(&kit.0.db).await?;
     let all: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM access_provider_flows WHERE expires_at>? AND used_at IS NULL",

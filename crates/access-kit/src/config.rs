@@ -7,6 +7,7 @@ pub struct AccessConfig {
     pub(crate) github: Option<ProviderCredentials>,
     pub(crate) google: Option<ProviderCredentials>,
     pub(crate) mock_base: Option<Url>,
+    pub(crate) dynamic_client_registration: bool,
 }
 #[derive(Clone)]
 pub(crate) struct ProviderCredentials {
@@ -22,6 +23,19 @@ impl AccessConfig {
         let mut config = Self::for_origin(&origin)?;
         config.github = provider("GITHUB");
         config.google = provider("GOOGLE");
+        config.dynamic_client_registration = match env::var("ACCESS_DYNAMIC_CLIENT_REGISTRATION")
+            .ok()
+            .as_deref()
+        {
+            None | Some("" | "false" | "0") => false,
+            Some("true" | "1") => true,
+            _ => {
+                return Err(AccessError::bad(
+                    "invalid_configuration",
+                    "ACCESS_DYNAMIC_CLIENT_REGISTRATION must be true or false",
+                ))
+            }
+        };
         #[cfg(feature = "test-support")]
         if let Ok(base) = env::var("ACCESS_TEST_MOCK_PROVIDER_URL") {
             if !base.trim().is_empty() {
@@ -55,7 +69,13 @@ impl AccessConfig {
             github: None,
             google: None,
             mock_base: None,
+            dynamic_client_registration: false,
         })
+    }
+    /// Public registration is opt-in; administrative registration is always available.
+    pub fn with_dynamic_client_registration(mut self, enabled: bool) -> Self {
+        self.dynamic_client_registration = enabled;
+        self
     }
     #[cfg(feature = "test-support")]
     pub fn with_mock_providers(mut self, base: &str) -> Result<Self, AccessError> {

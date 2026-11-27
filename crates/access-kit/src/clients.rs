@@ -43,7 +43,11 @@ pub(crate) fn valid_redirect(value: &str) -> bool {
         && value.len() <= 2048
         && (u.scheme() == "https" || u.scheme() == "http" && local)
 }
-pub(crate) async fn register(kit: &AccessKit, b: Registration) -> Result<Value, AccessError> {
+pub(crate) async fn register(
+    kit: &AccessKit,
+    b: Registration,
+    public: bool,
+) -> Result<Value, AccessError> {
     if b.client_name.trim().is_empty()
         || b.client_name.chars().count() > 80
         || b.redirect_uris.is_empty()
@@ -61,20 +65,36 @@ pub(crate) async fn register(kit: &AccessKit, b: Registration) -> Result<Value, 
     }
     let id = random();
     let at = now();
-    let mut tx = kit.0.db.begin().await?;
-    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM access_clients")
-        .fetch_one(&mut *tx)
+    let mut tx = kit.0.db.begin_with("BEGIN IMMEDIATE").await?;
+    // A public registration has 24 hours to receive its first user grant.
+    // Keep live consent/code references and every previously authorized client.
+    sqlx::query("DELETE FROM access_consents WHERE expires_at<?")
+        .bind(at)
+        .execute(&mut *tx)
         .await?;
-    if count >= 256 {
-        return Err(AccessError::bad("client_limit", "Client limit reached"));
+    sqlx::query("DELETE FROM access_codes WHERE expires_at<?")
+        .bind(at)
+        .execute(&mut *tx)
+        .await?;
+    sqlx::query("DELETE FROM access_clients WHERE public_registration=1 AND created_at<? AND NOT EXISTS(SELECT 1 FROM access_grants WHERE client_id=access_clients.client_id) AND NOT EXISTS(SELECT 1 FROM access_consents WHERE client_id=access_clients.client_id) AND NOT EXISTS(SELECT 1 FROM access_codes WHERE client_id=access_clients.client_id)").bind(at-86400).execute(&mut *tx).await?;
+    if public {
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM access_clients WHERE public_registration=1 AND NOT EXISTS(SELECT 1 FROM access_grants WHERE client_id=access_clients.client_id)")
+            .fetch_one(&mut *tx).await?;
+        if count >= 256 {
+            return Err(AccessError::bad(
+                "client_limit",
+                "Pending public client limit reached; use an administrator-registered client",
+            ));
+        }
     }
     sqlx::query(
-        "INSERT INTO access_clients(client_id,client_name,redirect_uris,created_at)VALUES(?,?,?,?)",
+        "INSERT INTO access_clients(client_id,client_name,redirect_uris,created_at,public_registration)VALUES(?,?,?,?,?)",
     )
     .bind(&id)
     .bind(b.client_name.trim())
     .bind(serde_json::to_string(&b.redirect_uris).map_err(|_| AccessError::unavailable())?)
     .bind(at)
+    .bind(public)
     .execute(&mut *tx)
     .await?;
     tx.commit().await?;
