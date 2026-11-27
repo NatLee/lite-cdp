@@ -24,7 +24,6 @@
 <g fill="#101211" stroke="#f4f5ef" stroke-width="2"><rect x="650" y="216" width="16" height="16"/><rect x="810" y="216" width="16" height="16"/><rect x="974" y="216" width="16" height="16"/><rect x="650" y="412" width="16" height="16"/><rect x="810" y="412" width="16" height="16"/><rect x="974" y="412" width="16" height="16"/></g>
 <g fill="#b4bba8" font-size="11"><text x="648" y="258">/pricing</text><text x="810" y="258">click</text><text x="974" y="258">identify</text><text x="648" y="455">/welcome</text><text x="810" y="455">signup</text><text x="974" y="455">identify</text></g>
 <g fill="#f4f5ef" font-size="12"><text x="648" y="292">anon_a71…</text><text x="648" y="488">anon_b92…</text></g>
-<path d="M1148 321H1352" stroke="#c7e45b" stroke-width="4"/>
 <rect x="1098" y="298" width="248" height="48" fill="#c7e45b"/>
 <text x="1222" y="328" fill="#101211" font-size="15" text-anchor="middle">user_id: member-42</text>
 <text x="1098" y="386" fill="#c7e45b" font-size="11">MATCH BY DECLARED ID</text>
