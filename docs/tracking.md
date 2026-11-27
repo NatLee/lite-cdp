@@ -2,6 +2,32 @@
 
 Signal Console makes the ingestion policy visible. A browser identifier is a random first-party value. A person is joined across browsers only through an explicit, site-scoped identity claim. No fingerprint, IP matching, probabilistic algorithm, or language model is used.
 
+## Illustrated walkthrough
+
+These are actual Chrome captures of the current application using a disposable, fictitious demo. The identity lab is a local simulator; its example payloads do not write analytics. The journey image shows recorded demo events from the real API.
+
+### 1. Try the explicit identity rule
+
+Open **安裝與設定** and use the identity lab. Choose **登入同一會員**, switch to **另一台裝置**, then identify the same member again. Compare the example payload and matching result: two browsers join only after the same explicit member ID. Try logout, storage clearing or denied consent to see the separate outcomes.
+
+![Identity lab showing two browsers joined by an explicit shared member ID](images/signal-identity-light.png)
+
+### 2. Save the collection policy and install once
+
+Choose the fields and consent policy, then press **儲存採集設定**. Select your framework; the image below shows Next.js placement and the CMP/login/logout callbacks. Install one loader at the documented application root. Connect consent first, then identify the authenticated member after a grant. The recipes below cover HTML, React, Next.js, Vue, Nuxt and GTM.
+
+![Next.js installation recipe and consent, login and logout callbacks](images/signal-install-light.png)
+
+Before production collection, follow [Real installation receipt](#real-installation-receipt): create a test code, load it on the tracked site and check the accepted payload. A test code alone is not a received request. The screenshots here show the integration teaching and journey, not a received test receipt.
+
+### 3. Read a recorded visit
+
+After removing test mode, open the overview, select a recent visitor and choose a visit. Click a node to inspect its event details. Events are grouped by recorded session ID; equally spaced nodes indicate order, not elapsed time. The page states that the loaded visit may be incomplete; use the person's timeline to load earlier events.
+
+![Recorded demo visit grouped by session with page, action and identity lanes](images/screenshot-journey-dark.png)
+
+For HTTP clients and policy field names, use the [API reference](api.md). The following sections define compatibility, consent, identity ordering and collection limits.
+
 ## Installation and compatibility
 
 Use one loader per document with one site key and collector endpoint. The same loader loaded twice reuses the existing instance without another pageview or listener. A different key or endpoint raises `conflicting_installation` and keeps the original destination. This is not a multi-site SDK within a single document.
@@ -137,9 +163,9 @@ The 64-character secret string is used as UTF-8 key bytes (do not hex-decode it)
 1. An administrator creates a 15-minute test via `POST /api/sites/{id}/installation-tests` or the UI.
 2. Temporarily add `data-test-token` to the loader, or run `cdp.test(token); cdp.page(); cdp.flush()` on the installed website. When changing modes, preexisting queued events are flushed in their old mode; a dedicated test snippet avoids mixing them.
 3. Retrieve `GET /api/sites/{id}/installation-tests/{token}`. The UI offers **檢查回執**. It reports the latest accepted test payload after normal origin/consent/signature/sanitization checks.
-4. Remove the attribute or call `cdp.test("")` to resume normal collection. Wrong-site/expired tokens return 403; they never silently write analytics.
+4. Remove the attribute or call `cdp.test("")` to resume normal collection. After policy filtering and payload validation, wrong-site/expired tokens return 403; they never silently write analytics. If policy removes all events and identity claims, the collector returns 204 before token validation and stores no receipt or analytics. A 204 alone does not confirm the token or a completed test.
 
-Tests never create people, devices, events or labels. Receipts expire after 15 minutes and expired rows are removed when a new test is created; they are not a permanent audit log. Do not put secrets in test data. A missing receipt means no accepted request has reached the collector: check active site, consent, DNT, allowed origin, CSP `script-src`/`connect-src`, ad blockers, HTTPS mixed content, proxy `/tracker-config/` route, and `cdp.status().last_error`. CSP must permit both config and collection requests. `cdp:diagnostic` is a browser event for local inspection, not a server monitoring service.
+Tests never create people, devices, events or labels. Receipts expire after 15 minutes and expired rows are removed when a new test is created; they are not a permanent audit log. Do not put secrets in test data. A missing receipt means no test payload was stored: check whether policy removed all submitted content, then check active site, consent, DNT, allowed origin, CSP `script-src`/`connect-src`, ad blockers, HTTPS mixed content, proxy `/tracker-config/` route, and `cdp.status().last_error`. CSP must permit both config and collection requests. `cdp:diagnostic` is a browser event for local inspection, not a server monitoring service.
 
 ## Retention and deletion
 
