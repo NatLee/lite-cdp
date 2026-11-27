@@ -7,6 +7,7 @@ use crate::{auth::LoginLimiter, config::Config, ratelimit::RateLimiter};
 pub type AppState = Arc<Inner>;
 
 pub struct Inner {
+    pub access: std::sync::OnceLock<access_kit::AccessKit>,
     pub db: SqlitePool,
     pub config: Config,
     pub limiter: LoginLimiter,
@@ -17,6 +18,7 @@ pub struct Inner {
 impl Inner {
     pub fn new(db: SqlitePool, config: Config) -> Self {
         Self {
+            access: std::sync::OnceLock::new(),
             db,
             collects: RateLimiter::new(config.rate_limit, Duration::from_secs(60)),
             config,

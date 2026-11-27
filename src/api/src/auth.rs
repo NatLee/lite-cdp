@@ -293,6 +293,16 @@ pub fn clear_cookie(secure: bool) -> String {
     )
 }
 
+/// Read current host account authority for a server-authenticated invocation.
+pub async fn active_user(db: &SqlitePool, user_id: i64) -> Result<Option<CurrentUser>> {
+    Ok(sqlx::query_as::<_, CurrentUser>(
+        "SELECT id, username, display_name, role FROM users WHERE id=? AND disabled=0",
+    )
+    .bind(user_id)
+    .fetch_optional(db)
+    .await?)
+}
+
 impl FromRequestParts<AppState> for CurrentUser {
     type Rejection = AppError;
 
@@ -301,6 +311,11 @@ impl FromRequestParts<AppState> for CurrentUser {
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
         let unauthorized = || AppError::Unauthorized("請先登入".into());
+        if let Some(principal) = parts.extensions.get::<access_kit::TrustedPrincipal>() {
+            return active_user(&state.db, principal.user_id())
+                .await?
+                .ok_or_else(unauthorized);
+        }
         let token = read_cookie(&parts.headers, COOKIE_NAME).ok_or_else(unauthorized)?;
         user_for_token(&state.db, &token)
             .await?

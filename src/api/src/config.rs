@@ -29,7 +29,17 @@ pub struct Config {
 impl Config {
     pub fn from_env() -> Result<Self> {
         let data_dir = PathBuf::from(var("CDP_DATA_DIR").unwrap_or_else(|| "data".into()));
-        let public_url = var("CDP_PUBLIC_URL").map(|u| u.trim().trim_end_matches('/').to_owned());
+        let legacy = var("CDP_PUBLIC_URL");
+        let access = var("ACCESS_PUBLIC_URL");
+        if let (Some(left), Some(right)) = (&legacy, &access) {
+            anyhow::ensure!(
+                origin_of(left) == origin_of(right),
+                "CDP_PUBLIC_URL and ACCESS_PUBLIC_URL must have the same origin"
+            );
+        }
+        let public_url = legacy
+            .or(access)
+            .map(|u| u.trim().trim_end_matches('/').to_owned());
         let cookie_secure = match var("CDP_COOKIE_SECURE") {
             Some(v) => truthy(&v),
             None => public_url

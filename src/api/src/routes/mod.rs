@@ -26,8 +26,8 @@ use tower_http::{
 
 use crate::{auth::origin_guard, error::AppError, state::AppState};
 
-pub fn router(state: AppState) -> Router {
-    let api = Router::new()
+fn api_routes() -> Router<AppState> {
+    Router::new()
         .route("/health", get(|| async { "ok" }))
         .route("/meta", get(meta))
         .route("/auth/state", get(auth::state))
@@ -71,7 +71,16 @@ pub fn router(state: AppState) -> Router {
                 .patch(segments::update)
                 .delete(segments::remove),
         )
-        .fallback(|| async { AppError::not_found("找不到這個 API") });
+        .fallback(|| async { AppError::not_found("找不到這個 API") })
+}
+
+/// Fixed domain reuse path: no public tracing, no access routes, no network.
+pub fn domain_router(state: AppState) -> Router {
+    Router::new().nest("/api", api_routes()).with_state(state)
+}
+
+pub fn router(state: AppState) -> Router {
+    let api = api_routes();
 
     // 前端是單頁應用：找不到的路徑一律回 index.html，交給前端路由。
     let static_dir = state.config.static_dir.clone();
@@ -100,7 +109,7 @@ pub fn router(state: AppState) -> Router {
             header::REFERRER_POLICY,
             HeaderValue::from_static("same-origin"),
         ))
-        .layer(TraceLayer::new_for_http())
+        .layer(TraceLayer::new_for_http().make_span_with(|request:&axum::http::Request<axum::body::Body>|tracing::info_span!("http",method=%request.method(),path=request.uri().path())))
         .with_state(state)
 }
 

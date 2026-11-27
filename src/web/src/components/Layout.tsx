@@ -2,6 +2,7 @@ import {
   Code2,
   FileText,
   Globe,
+  KeyRound,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -76,6 +77,7 @@ const SITE_NAV: NavItem[] = [
 
 const GLOBAL_NAV: NavItem[] = [
   { to: "/sites", label: "所有網站", icon: Globe },
+  { to: "/connections", label: "連線與存取", icon: KeyRound },
   { to: "/settings", label: "帳號設定", icon: Settings },
 ];
 
