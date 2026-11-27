@@ -6,7 +6,7 @@
   <a href="https://github.com/NatLee/lite-cdp/actions/workflows/ci.yml"><img src="https://github.com/NatLee/lite-cdp/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <img src="https://img.shields.io/badge/backend-Rust%20%2B%20axum-b7410e" alt="Rust + axum">
   <img src="https://img.shields.io/badge/frontend-React%20%2B%20Tailwind-124bb6" alt="React + Tailwind">
-  <img src="https://img.shields.io/badge/docker-one%20image-2496ed" alt="Docker">
+  <img src="https://img.shields.io/badge/docker-nginx%20%2B%20API-2496ed" alt="Docker">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT">
 </p>
 
@@ -14,7 +14,7 @@
 
 Lite CDP 是一個自己架的小型顧客資料平台。在網站上貼一行程式碼，它就開始記每個訪客看了哪些頁、點了什麼；訪客登入或留下 email 的那一刻，之前匿名看過的紀錄會併到這個人身上。接著用規則幫人貼標籤，再用標籤和條件組出名單，匯出成 CSV 拿去寄信或投廣告。
 
-一個 Docker 映像檔就是全部：Rust 後端、React 前端、SQLite 資料庫。資料留在你自己的機器上。
+一份 Docker Compose 啟動 nginx 前端與內部 Rust API，資料存於 SQLite。資料留在你自己的機器上。
 
 ## 三步讀懂一次來訪
 
@@ -109,6 +109,18 @@ git clone https://github.com/NatLee/lite-cdp.git
 cd lite-cdp
 docker compose up -d --build
 ```
+
+只有 nginx 發布 `8585`；前端資產由 nginx 提供，API、OAuth 與 MCP 轉送至內部 `lite-cdp`。資料仍保存於原本的 SQLite volume。
+
+```mermaid
+flowchart LR
+  Browser[瀏覽器 / API / MCP] -->|:8585| Nginx[nginx]
+  Nginx --> Static[前端靜態檔案]
+  Nginx --> API[內部 Rust API]
+  API --> SQLite[(SQLite volume)]
+```
+
+瀏覽器網址須與 `ACCESS_PUBLIC_URL` 完全相同；預設使用 `http://127.0.0.1:8585`。正式 HTTPS 網域、既有 URL 變數、代理路由與升級方式見 [nginx 部署說明](docs/nginx-deployment.md)。
 
 打開 <http://127.0.0.1:8585>，第一次會請你建立管理員帳號。接著：
 

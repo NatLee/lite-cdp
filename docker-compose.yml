@@ -1,30 +1,51 @@
 services:
   lite-cdp:
-    build: .
-    image: lite-cdp:latest
+    build:
+      context: .
+      target: runtime
+    image: lite-cdp:runtime
     container_name: lite-cdp
     restart: unless-stopped
-    ports:
-      - "${CDP_PORT:-8585}:8585"
+    expose:
+      - "8585"
     volumes:
       # SQLite 資料庫在這裡，請記得備份
       - lite-cdp-data:/app/data
     environment:
       # 外部看到的網址：追蹤程式碼用它組，是 https 時登入 cookie 會加 Secure
-      CDP_PUBLIC_URL: ${CDP_PUBLIC_URL:-}
+      CDP_PUBLIC_URL: ${CDP_PUBLIC_URL:-${ACCESS_PUBLIC_URL:-http://127.0.0.1:${CDP_PORT:-8585}}}
       CDP_COOKIE_SECURE: ${CDP_COOKIE_SECURE:-}
       ACCESS_DYNAMIC_CLIENT_REGISTRATION: ${ACCESS_DYNAMIC_CLIENT_REGISTRATION:-false}
-      ACCESS_PUBLIC_URL: ${ACCESS_PUBLIC_URL:-}
+      ACCESS_PUBLIC_URL: ${ACCESS_PUBLIC_URL:-${CDP_PUBLIC_URL:-http://127.0.0.1:${CDP_PORT:-8585}}}
       ACCESS_GITHUB_CLIENT_ID: ${ACCESS_GITHUB_CLIENT_ID:-}
       ACCESS_GITHUB_CLIENT_SECRET: ${ACCESS_GITHUB_CLIENT_SECRET:-}
       ACCESS_GOOGLE_CLIENT_ID: ${ACCESS_GOOGLE_CLIENT_ID:-}
       ACCESS_GOOGLE_CLIENT_SECRET: ${ACCESS_GOOGLE_CLIENT_SECRET:-}
       # 前面有反向代理時設 true，次數限制才會看到訪客真正的 IP（IP 只用來限流，不會存下來）
-      CDP_TRUST_PROXY: ${CDP_TRUST_PROXY:-}
+      CDP_TRUST_PROXY: ${CDP_TRUST_PROXY:-true}
       # 同一個 IP 一分鐘最多送幾次資料（預設 600，0 是不限制）
       CDP_RATE_LIMIT: ${CDP_RATE_LIMIT:-}
       # 事件留幾天（預設 0：不自動刪）
       CDP_RETENTION_DAYS: ${CDP_RETENTION_DAYS:-}
+
+  nginx:
+    build:
+      context: .
+      target: frontend
+    image: lite-cdp-nginx:latest
+    container_name: lite-cdp-nginx
+    restart: unless-stopped
+    depends_on:
+      lite-cdp:
+        condition: service_started
+    ports:
+      - "${CDP_PORT:-8585}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
 
 volumes:
   lite-cdp-data:
