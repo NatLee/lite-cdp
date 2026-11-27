@@ -1,0 +1,102 @@
+[
+  {
+    "width": 1440,
+    "route": "/sites",
+    "violations": []
+  },
+  {
+    "width": 1440,
+    "route": "/settings",
+    "violations": []
+  },
+  {
+    "width": 1440,
+    "route": "/s/1/overview",
+    "violations": []
+  },
+  {
+    "width": 1440,
+    "route": "/s/1/people",
+    "violations": []
+  },
+  {
+    "width": 1440,
+    "route": "/s/1/people/167",
+    "violations": []
+  },
+  {
+    "width": 1440,
+    "route": "/s/1/pages",
+    "violations": []
+  },
+  {
+    "width": 1440,
+    "route": "/s/1/labels",
+    "violations": []
+  },
+  {
+    "width": 1440,
+    "route": "/s/1/segments",
+    "violations": []
+  },
+  {
+    "width": 1440,
+    "route": "/s/1/segments/2",
+    "violations": []
+  },
+  {
+    "width": 1440,
+    "route": "/s/1/install",
+    "violations": []
+  },
+  {
+    "width": 390,
+    "route": "/sites",
+    "violations": []
+  },
+  {
+    "width": 390,
+    "route": "/settings",
+    "violations": []
+  },
+  {
+    "width": 390,
+    "route": "/s/1/overview",
+    "violations": []
+  },
+  {
+    "width": 390,
+    "route": "/s/1/people",
+    "violations": []
+  },
+  {
+    "width": 390,
+    "route": "/s/1/people/167",
+    "violations": []
+  },
+  {
+    "width": 390,
+    "route": "/s/1/pages",
+    "violations": []
+  },
+  {
+    "width": 390,
+    "route": "/s/1/labels",
+    "violations": []
+  },
+  {
+    "width": 390,
+    "route": "/s/1/segments",
+    "violations": []
+  },
+  {
+    "width": 390,
+    "route": "/s/1/segments/2",
+    "violations": []
+  },
+  {
+    "width": 390,
+    "route": "/s/1/install",
+    "violations": []
+  }
+]

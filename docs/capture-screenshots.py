@@ -8,6 +8,7 @@ import asyncio
 import os
 from pathlib import Path
 from playwright.async_api import async_playwright, expect
+from frontend_style_audit import assert_computed_styles
 
 URL = os.environ.get("DEMO_URL", "http://127.0.0.1:5173").rstrip("/")
 PASSWORD = os.environ["DEMO_PASSWORD"]
@@ -47,6 +48,7 @@ async def main():
             await capture.evaluate("document.fonts.ready")
             await capture.evaluate("new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))")
             await capture.wait_for_timeout(250)
+            await assert_computed_styles(capture)
             await capture.mouse.move(0, 0)
             assert not await capture.evaluate("document.documentElement.scrollWidth > innerWidth"), path
             if selector:

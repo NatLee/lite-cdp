@@ -38,7 +38,11 @@ Lite CDP 是一個自己架的小型顧客資料平台。在網站上貼一行�
 
 ![步驟三：同一位訪客的個人時間軸，保留相同來訪與事件](docs/images/workflow-03.png)
 
+[觀看同一次來訪的事件游標與詳情切換（WebM）](docs/images/feature-motion.webm)。游標依實際選取事件以 180 ms 移動，詳情同步呈現原始時間與屬性；可用方向鍵、Home、End 選事件。節點等距只表示順序。系統啟用「減少動態」時游標與詳情立即到位，鍵盤焦點仍保留。
+
 前兩張是 1440 px 桌面視窗內的航圖元件裁切；第三張為完整視窗。重拍與資料一致性檢查見 [操作驗證](docs/workflow-verification.md) 與 [capture-workflow.py](docs/capture-workflow.py)。腳本只讀取 demo 資料。
+
+新版來源樣式、桌面／手機檢查與錄影驗證見 [主題動態驗證](docs/themed-motion-verification.md)。
 
 ## 功能
 
@@ -58,7 +62,7 @@ Lite CDP 是一個自己架的小型顧客資料平台。在網站上貼一行�
 
 ## 畫面與工作流程
 
-以墨藍、鈷藍與青色構成「Journey Observatory / 顧客行為航圖」：網站切換和功能導覽位於上方，保留完整寬度給名單、身份與行為時間軸。所有數字來自 API；截圖使用內建虛構 demo 資料。
+以墨藍與同色系淺藍構成「Journey Observatory / 顧客行為航圖」：網站切換和功能導覽位於上方，保留完整寬度給名單、身份與行為時間軸。所有數字來自 API；截圖使用內建虛構 demo 資料。
 
 ### 從一次來訪開始
 

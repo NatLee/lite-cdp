@@ -117,3 +117,19 @@ test("an empty journey explains the absence of observed events", () => {
   render(<JourneyMap events={[]} />);
   expect(screen.getByText("這位訪客還沒有事件紀錄。")).toBeInTheDocument();
 });
+
+test("arrow keys move event focus within the selected session and retain keyboard focus", async () => {
+  render(<JourneyMap events={[event(1, "a"), event(3, "a", { type: "custom", name: "request_demo", props: { plan: "team" } }), event(2, "b")]} />);
+  const first = screen.getByRole("button", { name: /Page 1/ });
+  const last = screen.getByRole("button", { name: /request_demo/ });
+  first.focus();
+  await userEvent.keyboard("{ArrowRight}");
+  expect(last).toHaveFocus();
+  expect(last).toHaveAttribute("aria-pressed", "true");
+  expect(screen.getByText("plan: team")).toBeInTheDocument();
+  expect(screen.getByLabelText("選擇來訪")).toHaveValue("session:a");
+  await userEvent.keyboard("{Home}");
+  expect(first).toHaveFocus();
+  expect(first).toHaveAttribute("aria-pressed", "true");
+  expect(screen.queryByText("plan: team")).not.toBeInTheDocument();
+});

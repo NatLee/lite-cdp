@@ -31,7 +31,7 @@ function More({ to, children }: { to: string; children: string }) {
       to={to}
       className="inline-flex items-center gap-1 text-xs text-brand-700 hover:underline dark:text-brand-300"
     >
-      {children} <ArrowRight className="size-3" />
+      {children} <ArrowRight className="size-4" />
     </Link>
   );
 }
@@ -183,7 +183,7 @@ export function OverviewPage() {
                     <li key={l.id}>
                       <Link
                         to={`${base}/people?label_id=${l.id}`}
-                        className="flex items-center justify-between gap-3 px-4 py-2.5 transition-colors hover:bg-zinc-50 sm:px-5 dark:hover:bg-zinc-800/50"
+                        className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-zinc-50 sm:px-5 dark:hover:bg-zinc-800/50"
                       >
                         <Badge tone={l.color}>{l.name}</Badge>
                         <span className="text-sm tabular-nums">
@@ -216,7 +216,7 @@ export function OverviewPage() {
                   {data.recent_identified.map((p) => (
                     <li
                       key={p.id}
-                      className="flex items-center justify-between gap-3 px-4 py-2.5 sm:px-5"
+                      className="flex items-center justify-between gap-3 px-4 py-3 sm:px-5"
                     >
                       <PersonLink siteId={site.id} person={p} />
                       <span className="shrink-0 text-xs text-zinc-500 dark:text-zinc-400">

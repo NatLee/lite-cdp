@@ -116,9 +116,9 @@ export function People() {
             onClick={() =>
               set({ kind: tab.value === "all" ? undefined : tab.value })
             }
-            className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
+            className={`rounded-lg px-3 py-2 text-sm transition-colors ${
               kind === tab.value
-                ? "bg-brand-600 font-medium text-white dark:bg-brand-500 dark:text-zinc-950"
+                ? "bg-brand-600 font-semibold text-white dark:bg-brand-500 dark:text-zinc-950"
                 : "text-zinc-600 hover:bg-zinc-200/70 dark:text-zinc-400 dark:hover:bg-zinc-800"
             }`}
           >
@@ -209,7 +209,7 @@ export function People() {
       {!list.data && !list.error && <Loading />}
       {list.data && (
         <div className="card overflow-hidden">
-          <div className="border-b border-zinc-100 px-4 py-2.5 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+          <div className="border-b border-zinc-100 px-4 py-3 text-sm text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
             共 {num(total)} 人
           </div>
           {items.length === 0 ? (

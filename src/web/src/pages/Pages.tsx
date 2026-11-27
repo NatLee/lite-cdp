@@ -63,7 +63,7 @@ export function Pages() {
                   {data.map((p) => (
                     <tr key={p.path} className="transition-colors hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
                       <td className="td max-w-80 pl-4">
-                        <p className="truncate font-medium">{p.title || p.path}</p>
+                        <p className="truncate font-semibold">{p.title || p.path}</p>
                         <a
                           className="block truncate font-mono text-xs text-zinc-500 hover:underline dark:text-zinc-400"
                           href={p.url}
@@ -85,7 +85,7 @@ export function Pages() {
                           to={`/s/${site.id}/labels?path=${encodeURIComponent(p.path)}`}
                           title="用這個路徑建一個標籤"
                         >
-                          <Tag className="size-3.5" /> 建標籤
+                          <Tag className="size-4" /> 建標籤
                         </Link>
                       </td>
                     </tr>

@@ -72,11 +72,11 @@ export function PersonLink({
   return (
     <Link
       to={`/s/${siteId}/people/${person.id}`}
-      className="group flex min-w-0 items-center gap-2.5"
+      className="group flex min-w-0 items-center gap-3"
     >
       <Avatar person={person} />
       <span className="min-w-0">
-        <span className="block truncate text-sm font-medium group-hover:text-brand-700 dark:group-hover:text-brand-300">
+        <span className="block truncate text-sm font-semibold group-hover:text-brand-700 dark:group-hover:text-brand-300">
           {personName(person)}
         </span>
         {person.name && person.email && (
@@ -105,7 +105,7 @@ export function StatCard({
   const body = (
     <>
       <div className="flex items-center justify-between text-zinc-500 dark:text-zinc-400">
-        <span className="text-xs font-medium">{label}</span>
+        <span className="text-xs font-semibold">{label}</span>
         <Icon className="size-4" />
       </div>
       <p className="mt-2 text-2xl font-semibold tracking-tight tabular-nums">
@@ -143,7 +143,7 @@ export function Trend({
   const Icon = change > 0 ? TrendingUp : TrendingDown;
   return (
     <span className="inline-flex items-center gap-1">
-      <Icon className="size-3.5" />
+      <Icon className="size-4" />
       比前 7 天{change > 0 ? "多" : "少"} {Math.abs(change)}%
     </span>
   );
@@ -229,7 +229,7 @@ export function BarList({
       {rows.map((r) => (
         <li
           key={r.key}
-          className="relative overflow-hidden rounded-lg px-2.5 py-1.5"
+          className="relative overflow-hidden rounded-lg px-3 py-2"
         >
           <span
             aria-hidden

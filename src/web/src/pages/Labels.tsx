@@ -98,7 +98,7 @@ function LabelDialog({
           </div>
           <div>
             <span className="label">顏色</span>
-            <div className="flex h-9 items-center gap-1.5" role="radiogroup" aria-label="顏色">
+            <div className="flex h-9 items-center gap-2" role="radiogroup" aria-label="顏色">
               {COLORS.map((c) => (
                 <button
                   key={c}
@@ -173,7 +173,7 @@ function LabelDialog({
             disabled={rules.length >= 20}
             onClick={() => setRules((current) => [...current, { kind: "path_prefix", value: "" }])}
           >
-            <Plus className="size-3.5" /> 再加一條
+            <Plus className="size-4" /> 再加一條
           </button>
         </fieldset>
         <div>
@@ -273,7 +273,7 @@ export function Labels() {
                       {label.rules.map((rule, i) => (
                         <li key={i} className="text-xs text-zinc-600 dark:text-zinc-300">
                           {RULE_LABEL[rule.kind]}{" "}
-                          <code className="rounded bg-zinc-100 px-1 py-0.5 font-mono dark:bg-zinc-800">{rule.value}</code>
+                          <code className="rounded bg-zinc-100 px-1 py-1 font-mono dark:bg-zinc-800">{rule.value}</code>
                         </li>
                       ))}
                     </ul>
@@ -286,10 +286,10 @@ export function Labels() {
                   </td>
                   <td className="td pr-4 text-right align-top whitespace-nowrap">
                     <button className="btn btn-ghost px-2 py-1 text-xs" onClick={() => setDialog({ label })}>
-                      <Pencil className="size-3.5" /> 編輯
+                      <Pencil className="size-4" /> 編輯
                     </button>
                     <button className="btn btn-ghost px-2 py-1 text-xs" aria-label={`刪除 ${label.name}`} onClick={() => setRemoving(label)}>
-                      <Trash2 className="size-3.5" />
+                      <Trash2 className="size-4" />
                     </button>
                   </td>
                 </tr>

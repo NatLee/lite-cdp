@@ -46,14 +46,14 @@ export function Segments() {
                       {segment.name}
                     </Link>
                   </h2>
-                  {segment.description && <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">{segment.description}</p>}
+                  {segment.description && <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{segment.description}</p>}
                 </div>
                 <Link className="shrink-0 text-right" to={`${base}/people?segment_id=${segment.id}`} title="看這些人">
                   <span className="text-2xl font-semibold tracking-tight tabular-nums">{num(segment.count)}</span>
                   <span className="ml-1 text-xs text-zinc-500 dark:text-zinc-400">人</span>
                 </Link>
               </div>
-              <ul className="flex flex-wrap gap-1.5">
+              <ul className="flex flex-wrap gap-2">
                 <li>
                   <Badge tone="brand">{KIND_LABEL[segment.kind]}</Badge>
                 </li>

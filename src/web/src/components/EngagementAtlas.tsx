@@ -41,7 +41,7 @@ export function EngagementAtlas({
           <span>累計訪客</span>
           <strong>{num(total)}</strong>
           <span>
-            探索全部名單 <ArrowRight size={14} />
+            探索全部名單 <ArrowRight size={16} />
           </span>
         </Link>
       </div>
@@ -103,7 +103,7 @@ export function EngagementAtlas({
                     <small>占全部 {share(count, total)}</small>
                   </span>
                   <span className="cohort-open">
-                    查看名單 <ArrowRight size={12} />
+                    查看名單 <ArrowRight size={16} />
                   </span>
                 </Link>
               );
@@ -113,7 +113,7 @@ export function EngagementAtlas({
       </div>
       <div className="cohort-notes">
         <span>
-          <Radio size={14} />
+          <Radio size={16} />
           圓面積代表人數；每人只在一格。
         </span>
         <span>目前狀態分布，不代表轉換率。時間以連續 24 小時計算。</span>
