@@ -37,3 +37,5 @@
 - v2 公開動態註冊預設關閉：metadata 不含 registration_endpoint，直接註冊請求回400 registration_disabled；管理員原生註冊與 OAuth 全流程正常。
 
 本次本機驗證映像識別：`sha256:3b98ed74d8abebb536eed0476746907ca77887398441e03611f3158bc2b7d7fa`。
+
+獨立驗證另以最終正式映像重跑原始 `docs/smoke-test.sh` 完整領域流程，並以官方 Python MCP SDK 加 REST 跨語言驗證精確2次成功、撤銷後401與重啟後狀態保留；兩專案均通過。兩份 feature-motion／access-workflow WebM 亦完成全片解碼。
