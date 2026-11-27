@@ -11,9 +11,18 @@ import {
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { api } from "../api";
+import { JourneyMap } from "../components/JourneyExplorer";
 import { PageBody, useSite } from "../components/Layout";
 import { Avatar, BarList, CardHeader } from "../components/people";
-import { Badge, Dialog, Empty, ErrorBanner, Loading, Spinner, useToast } from "../components/ui";
+import {
+  Badge,
+  Dialog,
+  Empty,
+  ErrorBanner,
+  Loading,
+  Spinner,
+  useToast,
+} from "../components/ui";
 import { useUser } from "../context";
 import { EVENT_LABEL, dateTime, num, personName, timeAgo } from "../lib/format";
 import { errorText, useAsync } from "../lib/hooks";
@@ -27,7 +36,13 @@ const EVENT_ICON: Record<EventType, LucideIcon> = {
   identify: UserCheck,
 };
 
-const EVENT_TYPES: EventType[] = ["pageview", "click", "scroll", "custom", "identify"];
+const EVENT_TYPES: EventType[] = [
+  "pageview",
+  "click",
+  "scroll",
+  "custom",
+  "identify",
+];
 
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -49,7 +64,9 @@ function Profile({ person }: { person: PersonDetail }) {
         {person.account && <Fact label="會員帳號">{person.account}</Fact>}
         <Fact label="第一次來">{dateTime(person.first_seen)}</Fact>
         <Fact label="最後一次來">{dateTime(person.last_seen)}</Fact>
-        {person.identified_at && <Fact label="認出來的時間">{dateTime(person.identified_at)}</Fact>}
+        {person.identified_at && (
+          <Fact label="認出來的時間">{dateTime(person.identified_at)}</Fact>
+        )}
         <Fact label="瀏覽頁數">{num(person.pageviews)}</Fact>
         <Fact label="來訪次數">{num(person.sessions)}</Fact>
         {traits.map(([key, value]) => (
@@ -70,7 +87,9 @@ function EventRow({ event }: { event: TimelineEvent }) {
   switch (event.type) {
     case "pageview":
       title = event.title || event.path;
-      detail = event.referrer_host ? `${event.path}・從 ${event.referrer_host} 來` : event.path;
+      detail = event.referrer_host
+        ? `${event.path}・從 ${event.referrer_host} 來`
+        : event.path;
       break;
     case "identify":
       title = `認出來是 ${event.name}`;
@@ -101,23 +120,44 @@ function EventRow({ event }: { event: TimelineEvent }) {
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm">
           {event.type !== "pageview" && event.type !== "identify" && (
-            <span className="mr-1.5 text-xs text-zinc-500 dark:text-zinc-400">{EVENT_LABEL[event.type]}</span>
+            <span className="mr-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+              {EVENT_LABEL[event.type]}
+            </span>
           )}
-          <span className={event.type === "pageview" ? "" : "font-medium"}>{title}</span>
+          <span className={event.type === "pageview" ? "" : "font-medium"}>
+            {title}
+          </span>
         </p>
-        {detail && <p className="truncate font-mono text-xs text-zinc-500 dark:text-zinc-400">{detail}</p>}
+        {detail && (
+          <p className="truncate font-mono text-xs text-zinc-500 dark:text-zinc-400">
+            {detail}
+          </p>
+        )}
         {props.length > 0 && (
           <p className="mt-1 flex flex-wrap gap-1">
             {props.map(([key, value]) => (
-              <span key={key} className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-[11px] text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-                {key}: {typeof value === "object" ? JSON.stringify(value) : String(value)}
+              <span
+                key={key}
+                className="rounded bg-zinc-100 px-1.5 py-0.5 font-mono text-[11px] text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+              >
+                {key}:{" "}
+                {typeof value === "object"
+                  ? JSON.stringify(value)
+                  : String(value)}
               </span>
             ))}
           </p>
         )}
       </div>
-      <time className="shrink-0 text-xs whitespace-nowrap text-zinc-500 tabular-nums dark:text-zinc-400" title={dateTime(event.created_at)}>
-        {new Date(event.created_at).toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit", hour12: false })}
+      <time
+        className="shrink-0 text-xs whitespace-nowrap text-zinc-500 tabular-nums dark:text-zinc-400"
+        title={dateTime(event.created_at)}
+      >
+        {new Date(event.created_at).toLocaleTimeString("zh-TW", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        })}
       </time>
     </li>
   );
@@ -135,8 +175,13 @@ function Timeline({ siteId, personId }: { siteId: number; personId: number }) {
     setBusy(true);
     setError(null);
     try {
-      const page = await api.events(siteId, personId, { before, type: type || undefined });
-      setEvents((current) => (before && current ? [...current, ...page.items] : page.items));
+      const page = await api.events(siteId, personId, {
+        before,
+        type: type || undefined,
+      });
+      setEvents((current) =>
+        before && current ? [...current, ...page.items] : page.items,
+      );
       setNext(page.next_before);
     } catch (e) {
       setError(errorText(e));
@@ -154,17 +199,24 @@ function Timeline({ siteId, personId }: { siteId: number; personId: number }) {
   // 同一天的排在一起
   const days: { day: string; items: TimelineEvent[] }[] = [];
   for (const event of events ?? []) {
-    const day = new Date(event.created_at).toLocaleDateString("zh-TW", { dateStyle: "full" });
+    const day = new Date(event.created_at).toLocaleDateString("zh-TW", {
+      dateStyle: "full",
+    });
     if (days.at(-1)?.day === day) days.at(-1)!.items.push(event);
     else days.push({ day, items: [event] });
   }
 
   return (
-    <section className="card">
+    <section className="person-event-ledger card">
       <CardHeader
         title="做過的事"
         actions={
-          <select className="input w-auto py-1 text-xs" aria-label="事件種類" value={type} onChange={(e) => setType(e.target.value as EventType | "")}>
+          <select
+            className="input w-auto py-1 text-xs"
+            aria-label="事件種類"
+            value={type}
+            onChange={(e) => setType(e.target.value as EventType | "")}
+          >
             <option value="">所有事件</option>
             {EVENT_TYPES.map((t) => (
               <option key={t} value={t}>
@@ -184,7 +236,12 @@ function Timeline({ siteId, personId }: { siteId: number; personId: number }) {
           <Loading />
         </div>
       )}
-      {events && events.length === 0 && <Empty icon={Eye} title={type ? "沒有這種事件" : "還沒有紀錄"} />}
+      {events && events.length === 0 && (
+        <Empty icon={Eye} title={type ? "沒有這種事件" : "還沒有紀錄"} />
+      )}
+      {events && events.length > 0 && (
+        <JourneyMap key={`${siteId}:${personId}:${type}`} events={events} />
+      )}
       {days.map(({ day, items }) => (
         <div key={day}>
           <h3 className="border-y border-zinc-100 bg-zinc-50 px-4 py-1.5 text-xs font-medium text-zinc-500 first:border-t-0 sm:px-5 dark:border-zinc-800 dark:bg-zinc-800/40 dark:text-zinc-400">
@@ -199,7 +256,11 @@ function Timeline({ siteId, personId }: { siteId: number; personId: number }) {
       ))}
       {next !== null && (
         <div className="border-t border-zinc-100 p-3 text-center dark:border-zinc-800">
-          <button className="btn btn-secondary" disabled={busy} onClick={() => void load(next)}>
+          <button
+            className="btn btn-secondary"
+            disabled={busy}
+            onClick={() => void load(next)}
+          >
             {busy && <Spinner />} 更早的
           </button>
         </div>
@@ -214,7 +275,10 @@ export function PersonPage() {
   const personId = Number(useParams().personId);
   const navigate = useNavigate();
   const toast = useToast();
-  const { data: person, error } = useAsync(() => api.person(site.id, personId), [site.id, personId]);
+  const { data: person, error } = useAsync(
+    () => api.person(site.id, personId),
+    [site.id, personId],
+  );
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -232,7 +296,10 @@ export function PersonPage() {
 
   return (
     <PageBody>
-      <Link to={`/s/${site.id}/people`} className="mb-4 inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
+      <Link
+        to={`/s/${site.id}/people`}
+        className="mb-4 inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+      >
         <ArrowLeft className="size-4" /> 名單
       </Link>
       {error && <ErrorBanner message={error} />}
@@ -245,7 +312,11 @@ export function PersonPage() {
               <div className="min-w-0">
                 <h1 className="flex flex-wrap items-center gap-2 text-xl font-semibold tracking-tight">
                   <span className="truncate">{personName(person)}</span>
-                  {person.email ? <Badge tone="green">會員</Badge> : <Badge>匿名訪客</Badge>}
+                  {person.email ? (
+                    <Badge tone="green">會員</Badge>
+                  ) : (
+                    <Badge>匿名訪客</Badge>
+                  )}
                 </h1>
                 <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
                   {person.name && person.email ? `${person.email}・` : ""}
@@ -254,26 +325,39 @@ export function PersonPage() {
               </div>
             </div>
             {admin && (
-              <button className="btn btn-secondary" onClick={() => setConfirming(true)}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setConfirming(true)}
+              >
                 <Trash2 className="size-4" /> 刪除資料
               </button>
             )}
           </div>
 
-          <div className="grid items-start gap-4 lg:grid-cols-5">
+          <div className="person-journey-layout grid items-start gap-4 lg:grid-cols-5">
             <div className="flex flex-col gap-4 lg:col-span-2">
               <Profile person={person} />
               <section className="card">
                 <CardHeader title="標籤" hint="符合規則的次數到了門檻才算有" />
                 {person.labels.length === 0 ? (
-                  <p className="px-4 py-6 text-center text-sm text-zinc-500 sm:px-5 dark:text-zinc-400">還沒有符合任何標籤。</p>
+                  <p className="px-4 py-6 text-center text-sm text-zinc-500 sm:px-5 dark:text-zinc-400">
+                    還沒有符合任何標籤。
+                  </p>
                 ) : (
                   <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
                     {person.labels.map((l) => (
-                      <li key={l.id} className={`flex items-center justify-between gap-3 px-4 py-2.5 sm:px-5 ${l.hits < l.min_hits ? "opacity-60" : ""}`}>
+                      <li
+                        key={l.id}
+                        className={`flex items-center justify-between gap-3 px-4 py-2.5 sm:px-5 ${l.hits < l.min_hits ? "opacity-60" : ""}`}
+                      >
                         <Badge tone={l.color}>{l.name}</Badge>
-                        <span className="text-xs text-zinc-500 tabular-nums dark:text-zinc-400" title={`最近一次 ${dateTime(l.last_at)}`}>
-                          {l.hits < l.min_hits ? `${l.hits} / ${l.min_hits} 次，還沒到門檻` : `${num(l.hits)} 次・${timeAgo(l.last_at)}`}
+                        <span
+                          className="text-xs text-zinc-500 tabular-nums dark:text-zinc-400"
+                          title={`最近一次 ${dateTime(l.last_at)}`}
+                        >
+                          {l.hits < l.min_hits
+                            ? `${l.hits} / ${l.min_hits} 次，還沒到門檻`
+                            : `${num(l.hits)} 次・${timeAgo(l.last_at)}`}
                         </span>
                       </li>
                     ))}
@@ -285,25 +369,49 @@ export function PersonPage() {
                 <BarList
                   unit="次"
                   empty="還沒有看過任何頁面。"
-                  rows={person.top_pages.map((p) => ({ key: p.path, label: p.title || p.path, hint: p.path, value: p.pageviews }))}
+                  rows={person.top_pages.map((p) => ({
+                    key: p.path,
+                    label: p.title || p.path,
+                    hint: p.path,
+                    value: p.pageviews,
+                  }))}
                 />
               </section>
               {person.referrers.length > 0 && (
                 <section className="card">
                   <CardHeader title="從哪裡來" />
-                  <BarList unit="次" empty="" rows={person.referrers.map((r) => ({ key: r.host, label: r.host, value: r.visits }))} />
+                  <BarList
+                    unit="次"
+                    empty=""
+                    rows={person.referrers.map((r) => ({
+                      key: r.host,
+                      label: r.host,
+                      value: r.visits,
+                    }))}
+                  />
                 </section>
               )}
               <section className="card">
-                <CardHeader title="用過的裝置" hint="同一個人在不同瀏覽器登入，會併在一起" />
+                <CardHeader
+                  title="用過的裝置"
+                  hint="同一個人在不同瀏覽器登入，會併在一起"
+                />
                 <ul className="divide-y divide-zinc-100 dark:divide-zinc-800">
                   {person.devices.map((d) => (
-                    <li key={d.id} className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm sm:px-5">
+                    <li
+                      key={d.id}
+                      className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm sm:px-5"
+                    >
                       <span>
                         {d.browser || "不明的瀏覽器"}
-                        <span className="text-zinc-500 dark:text-zinc-400">・{d.os || "不明的系統"}</span>
+                        <span className="text-zinc-500 dark:text-zinc-400">
+                          ・{d.os || "不明的系統"}
+                        </span>
                       </span>
-                      <span className="text-xs text-zinc-500 dark:text-zinc-400" title={dateTime(d.last_seen)}>
+                      <span
+                        className="text-xs text-zinc-500 dark:text-zinc-400"
+                        title={dateTime(d.last_seen)}
+                      >
                         {timeAgo(d.last_seen)}
                       </span>
                     </li>
@@ -322,17 +430,25 @@ export function PersonPage() {
             onClose={() => setConfirming(false)}
             footer={
               <>
-                <button className="btn btn-secondary" onClick={() => setConfirming(false)}>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => setConfirming(false)}
+                >
                   取消
                 </button>
-                <button className="btn btn-danger" disabled={busy} onClick={() => void remove()}>
+                <button
+                  className="btn btn-danger"
+                  disabled={busy}
+                  onClick={() => void remove()}
+                >
                   {busy && <Spinner />} 刪除
                 </button>
               </>
             }
           >
             <p className="text-sm text-zinc-600 dark:text-zinc-300">
-              {personName(person)} 的基本資料、{num(person.events)} 筆事件和裝置紀錄都會刪掉，沒辦法復原。
+              {personName(person)} 的基本資料、{num(person.events)}{" "}
+              筆事件和裝置紀錄都會刪掉，沒辦法復原。
               對方要求刪除個人資料時用這個。之後同一個瀏覽器再來，會被當成新的訪客。
             </p>
           </Dialog>

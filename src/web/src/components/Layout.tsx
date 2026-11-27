@@ -88,7 +88,7 @@ function Brand() {
           Lite CDP
         </span>
         <span className="block text-[11px] text-zinc-500 dark:text-zinc-400">
-          CUSTOMER ATLAS
+          JOURNEY OBSERVATORY
         </span>
       </span>
     </Link>

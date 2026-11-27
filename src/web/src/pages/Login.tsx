@@ -40,7 +40,7 @@ export function Login({ setupRequired }: { setupRequired: boolean }) {
   return (
     <div className="atlas-login">
       <section className="atlas-login-story">
-        <span className="eyebrow">LITE CDP / CUSTOMER ATLAS</span>
+        <span className="eyebrow">LITE CDP / JOURNEY OBSERVATORY</span>
         <h2>
           從一次造訪，
           <br />
@@ -51,15 +51,31 @@ export function Login({ setupRequired }: { setupRequired: boolean }) {
           <br />
           連成清楚的顧客旅程。
         </p>
-        <div className="login-orbit" aria-hidden="true">
-          <span className="orbit-one">瀏覽 / Discover</span>
-          <span className="orbit-center">
-            a person,
+        <div className="login-flightplan" aria-hidden="true">
+          <div className="flightplan-top">
+            OBSERVATION PROTOCOL <span>01—03</span>
+          </div>
+          <div className="flightplan-route">
+            <i />
+            <i />
+            <i />
+          </div>
+          <div className="flightplan-labels">
+            <span>
+              PAGEVIEW<small>每一頁瀏覽</small>
+            </span>
+            <span>
+              INTERACTION<small>每一次互動</small>
+            </span>
+            <span>
+              IDENTIFY<small>每一位訪客</small>
+            </span>
+          </div>
+          <div className="flightplan-caption">
+            TRACE THE VISIT.
             <br />
-            not a pageview.
-          </span>
-          <span className="orbit-two">辨識 / Recognize</span>
-          <span className="orbit-three">理解 / Understand</span>
+            <b>Understand the person.</b>
+          </div>
         </div>
       </section>
       <div className="atlas-login-form">

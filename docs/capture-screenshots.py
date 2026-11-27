@@ -20,12 +20,14 @@ async def main():
             options.pop("channel", None)
             options["executable_path"] = os.environ["PLAYWRIGHT_CHROMIUM_EXECUTABLE"]
         browser = await p.chromium.launch(**options)
-        context = await browser.new_context(viewport={"width": 1440, "height": 1050}, color_scheme="light", device_scale_factor=1)
+        context = await browser.new_context(viewport={"width": 1440, "height": 1050}, color_scheme="light", timezone_id="Asia/Taipei", device_scale_factor=1)
         page = await context.new_page()
         errors = []
         page.on("pageerror", lambda error: errors.append(str(error)))
         await page.goto(URL, wait_until="networkidle")
-        await page.screenshot(path=str(OUT / "screenshot-login-light.png"))
+        await page.evaluate("document.fonts.ready")
+        await page.wait_for_timeout(200)
+        await page.screenshot(path=str(OUT / "screenshot-login-light.png"), animations="disabled")
         await page.set_viewport_size({"width": 390, "height": 844})
         assert not await page.evaluate("document.documentElement.scrollWidth > innerWidth"), "mobile login"
         await page.set_viewport_size({"width": 1440, "height": 1050})
@@ -33,12 +35,25 @@ async def main():
         await page.get_by_label("密碼", exact=True).fill(PASSWORD)
         await page.get_by_role("button", name="登入", exact=True).click()
         await expect(page.get_by_role("button", name="登出", exact=True)).to_be_visible()
-        async def shot(path, filename, full=False):
-            await page.goto(URL + path, wait_until="networkidle")
-            await page.evaluate("document.fonts.ready")
-            await page.mouse.move(0, 0)
-            await page.screenshot(path=str(OUT / filename), full_page=full, animations="disabled")
-            assert not await page.evaluate("document.documentElement.scrollWidth > innerWidth"), path
+        async def shot(path, filename, full=False, selector=None):
+            # Each image starts with a fresh document at its final viewport.
+            capture_context = await browser.new_context(
+                viewport=page.viewport_size, storage_state=await context.storage_state(),
+                color_scheme="light", timezone_id="Asia/Taipei", device_scale_factor=1,
+            )
+            capture = await capture_context.new_page()
+            capture.on("pageerror", lambda error: errors.append(str(error)))
+            await capture.goto(URL + path, wait_until="networkidle")
+            await capture.evaluate("document.fonts.ready")
+            await capture.evaluate("new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))")
+            await capture.wait_for_timeout(250)
+            await capture.mouse.move(0, 0)
+            assert not await capture.evaluate("document.documentElement.scrollWidth > innerWidth"), path
+            if selector:
+                await capture.locator(selector).screenshot(path=str(OUT / filename), animations="disabled")
+            else:
+                await capture.screenshot(path=str(OUT / filename), full_page=full, animations="disabled")
+            await capture_context.close()
         sites = await (await context.request.get(URL + "/api/sites")).json()
         site = sites[0]["id"]
         base = f"/s/{site}"
@@ -49,8 +64,10 @@ async def main():
         routes = [(base + "/overview", "overview"), (base + "/people", "people"), (base + f"/people/{person}", "person"), (base + "/labels", "labels"), (base + f"/segments/{segment}", "segment"), (base + "/install", "install")]
         for route, name in routes:
             await shot(route, f"screenshot-{name}-light.png", full=name == "overview")
+        await shot(base + "/overview", "screenshot-journey-light.png", selector=".journey-observatory")
         await page.get_by_role("radio", name="深色", exact=True).click()
         await shot(base + "/overview", "screenshot-overview-dark.png", full=True)
+        await shot(base + "/overview", "screenshot-journey-dark.png", selector=".journey-observatory")
         await page.get_by_role("radio", name="淺色", exact=True).click()
         await page.set_viewport_size({"width": 390, "height": 844})
         await shot(base + "/overview", "screenshot-mobile.png", full=True)

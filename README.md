@@ -18,15 +18,18 @@ Lite CDP 是一個自己架的小型顧客資料平台。在網站上貼一行�
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/images/screenshot-overview-dark.png">
-    <img src="docs/images/screenshot-overview-light.png" alt="訪客觀測台：身分與回訪分布、每日流量探索與行為訊號" width="100%">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/images/screenshot-journey-dark.png">
+    <img src="docs/images/screenshot-journey-light.png" alt="顧客行為航圖局部：真實訪客、來訪選擇與逐事件路徑" width="100%">
   </picture>
 </p>
+
+上圖為總覽中的行為航圖區域；圖中的節點取自 demo 訪客實際儲存的事件。
 
 ## 功能
 
 - **一行程式碼就能裝**：自動記錄瀏覽、點擊和捲動深度，單頁應用（SPA）換網址也算。追蹤程式碼壓縮前約 7 KB，不用 cookie，不載入任何第三方的東西。
 - **把匿名訪客認出來**：呼叫 `identify` 之後，這個瀏覽器之前的匿名紀錄會併到這個人身上；同一個 email 在別的裝置登入也會併在一起。
+- **顧客行為航圖**：從最近出現的訪客選一人，再選一次來訪。瀏覽、互動、辨識分列成事件路徑，點節點查看時間、頁面、來源與屬性。
 - **每個人的完整時間軸**：看了哪些頁、從哪裡來、用什麼裝置、觸發過哪些事件，一次工作階段一段。
 - **標籤**：用規則描述「做過什麼事的人」（看過某個路徑底下的頁面、網址或標題含某些字、觸發過某個事件），可以設定要符合幾次才算。規則改了，舊資料會跟著重算。
 - **分群**：用標籤、來源、email、最近有沒有來、看過幾頁組出一份名單，分成「全部都要符合／至少符合一個／不能符合」三組。一邊調條件一邊看符合幾個人，存起來之後每次打開都是當下的結果。
@@ -40,17 +43,21 @@ Lite CDP 是一個自己架的小型顧客資料平台。在網站上貼一行�
 
 ## 畫面與工作流程
 
-以鈷藍與天空藍構成「顧客地圖」：網站切換和功能導覽位於上方，保留完整寬度給名單、身份與行為時間軸。所有數字來自 API；截圖使用內建虛構 demo 資料。
+以墨藍、鈷藍與青色構成「Journey Observatory / 顧客行為航圖」：網站切換和功能導覽位於上方，保留完整寬度給名單、身份與行為時間軸。所有數字來自 API；截圖使用內建虛構 demo 資料。
+
+### 從一次來訪開始
+
+總覽先呈現最近出現的六位訪客。選擇一位後，讀取最近 50 筆事件，以已記錄的 `session_id` 分組；沒有來訪識別的事件各自呈現。每次來訪按時間與事件編號排列，節點等距表示先後順序，不是時間比例。資料可能跨多頁，因此畫面明示單次來訪可能尚未完整。
 
 ### 從足跡到身份
 
-總覽以六個座標呈現目前身分 × 最後造訪：7 天內、7–30 天、超過 30 天。每人只在一格，圓面積代表人數、百分比以網站全部訪客為分母。點格子進入同樣條件的名單，也能直接匯出 CSV。這是目前的分布，不是轉換率或歷史遷移。
+航圖下方以六個座標呈現目前身分 × 最後造訪：7 天內、7–30 天、超過 30 天。每人只在一格，圓面積代表人數、百分比以網站全部訪客為分母。點格子進入同樣條件的名單，也能直接匯出 CSV。這是目前的分布，不是轉換率或歷史遷移。
 
 每日曲線可切換瀏覽頁數與訪客，點選或用日期滑桿查看一天的兩項數值。每日訪客按當天去重，跨日數字不當成全期獨立人數加總。
 
 ### 名單與個人旅程
 
-搜尋、標籤、分群與最近活躍篩選共同整理名單；個人頁將每個工作階段串成時間軸，並列身份、標籤、裝置和來源。
+搜尋、標籤、分群與最近活躍篩選共同整理名單；個人頁的寬幅航圖可切換來訪與事件種類，往下保留逐筆紀錄、載入更早事件、身份、標籤、裝置和來源。
 
 ![訪客名單](docs/images/screenshot-people-light.png)
 ![個人旅程](docs/images/screenshot-person-light.png)
@@ -62,7 +69,9 @@ Lite CDP 是一個自己架的小型顧客資料平台。在網站上貼一行�
 ![分群編輯](docs/images/screenshot-segment-light.png)
 
 <details>
-<summary>標籤、安裝、登入、深色與手機畫面</summary>
+<summary>完整總覽、標籤、安裝、登入、深色與手機畫面</summary>
+
+![完整總覽：行為航圖、每日流量與目前身分分布](docs/images/screenshot-overview-light.png)
 
 ![標籤](docs/images/screenshot-labels-light.png)
 ![安裝](docs/images/screenshot-install-light.png)
@@ -207,7 +216,7 @@ API 和收資料的格式在 [docs/api.md](docs/api.md)。
 
 ## 設計與驗證
 
-[視覺分析設計與驗證](docs/visual-insights.md) 說明分布定義與驗證；[原版型紀錄](docs/design.md) 說明版型、響應式、後端修正及驗證範圍。封面是可編輯的 [SVG](docs/images/cover.svg)；應用畫面由 [擷取腳本](docs/capture-screenshots.py) 對隔離的 demo 執行個體重拍。
+[產業介面設計與驗證](docs/industry-design.md) 說明這次的專用元件與真實資料互動；[視覺分析設計與驗證](docs/visual-insights.md) 說明分布定義與驗證；[原版型紀錄](docs/design.md) 說明版型、響應式、後端修正及驗證範圍。封面是可編輯的 [SVG](docs/images/cover.svg)；應用畫面由 [擷取腳本](docs/capture-screenshots.py) 對隔離的 demo 執行個體重拍。
 
 ## 授權
 
